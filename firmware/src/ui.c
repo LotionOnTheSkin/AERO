@@ -1391,8 +1391,11 @@ static void apply_preset_to(track_t *t, uint32_t pi)
  * its values or the new one with its own (voice.c engine_block), never one with the other's */
 static void set_engine_of(track_t *t, uint32_t ei)
 {
-    const engine_t *e = ENGINES[ei % NENGINES];
+    const engine_t *e;
     uint32_t i;
+    if (ENG_RESERVED_14 && ei % NENGINES == ENGI_ADPCM)   /* (14 held for ADPCM, not built: as ANALOG, as before NEON) */
+        ei = 0;
+    e = ENGINES[ei % NENGINES];
 #if !FELUCCA_FM4
     if (ei % NENGINES == ENGI_DIGITAL) {             /* DIGITAL (retired): its first preset, as FM6 */
         fm4_load_preset(t, 0);

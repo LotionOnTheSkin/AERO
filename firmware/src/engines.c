@@ -47,6 +47,28 @@ static uint8_t eng_mem_owner[NPART];       /* engine index + 1 whose state is in
 #if FELUCCA_ADPCM
 #include "eng_adpcm.c"           /* ADPCM: BRR waves and an FIR echo, its DSP ported from snes_spc (adpcm_dsp.c, LGPL-2.1+) */
 #endif
+#if FELUCCA_NEON
+#include "eng_neon.c"            /* NEON: synthwave voices (MIT) */
+#endif
+#if ENG_RESERVED_14
+/* engine 14 in a NEON build without ADPCM: held for ADPCM, so the numbers stay those of every Felucca build. Never
+ * offered (eng_ok), refused in a stored project or user preset (ENG_BAD_STORED), asked for by the editor or a preset
+ * number: ANALOG (ui.c set_engine_of). Silent, as DIGITAL's reserved 1 */
+static void eng_res_note_on(track_t *t, voice_t *v) { (void)t; (void)v; }
+static void eng_res_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
+{
+    (void)t; (void)v; (void)out; (void)n; (void)m;
+}
+#define ENG_RES_P {"-", F_INT, 0, 0, 0, 0, 0}
+static const engine_t ENG_RESERVED = {
+    .name = "-",
+    .page_title = {"-", "-"},
+    .edit = {ENG_RES_P, ENG_RES_P, ENG_RES_P, ENG_RES_P, ENG_RES_P, ENG_RES_P, ENG_RES_P, ENG_RES_P},
+    .note_on = eng_res_note_on,
+    .render = eng_res_render,
+    .knob = {P_E4, P_E5, P_E6, P_REL},
+};
+#endif
 
 /* the editor protocol, user presets and projects store these indices: append, never reorder */
 static const engine_t *const ENGINES[NENGINES] = {
@@ -72,6 +94,11 @@ static const engine_t *const ENGINES[NENGINES] = {
 #endif
 #if FELUCCA_ADPCM
     &ENG_ADPCM,                  /* 14 (ENGI_ADPCM; FELUCCA_ADPCM=0 builds without it) */
+#elif FELUCCA_NEON
+    &ENG_RESERVED,               /* 14: reserved for ADPCM (not built): never offered (eng_ok) */
+#endif
+#if FELUCCA_NEON
+    &ENG_NEON,                   /* 15 (ENGI_NEON) */
 #endif
 };
 
@@ -136,11 +163,17 @@ static const uint8_t ENGINE_ORDER[NENG_SHOWN] = {
 #if FELUCCA_ADPCM
     14,                          /* ADPCM (1.8): last, so the EDIT layer's white keys keep the 13 above (ui_layer.c LY_ENG_KEYS) */
 #endif
+#if FELUCCA_NEON
+    15,                          /* NEON: last as ADPCM, picked with PRESETS' ENG knob (no EDIT key: INIT stays on E5) */
+#endif
 };
 
 /* the engines one can pick (engine 1 only with FELUCCA_FM4), in ENGINE_ORDER: eng_ok(e), the n-th of them
  * eng_vis(n), e's place among them eng_rank(e), the next / previous one eng_step(e, dir) (wraps) */
-static int eng_ok(uint32_t e) { return e < NENGINES && (FELUCCA_FM4 || e != ENGI_DIGITAL); }
+static int eng_ok(uint32_t e)
+{
+    return e < NENGINES && (FELUCCA_FM4 || e != ENGI_DIGITAL) && (!ENG_RESERVED_14 || e != ENGI_ADPCM);
+}
 static uint32_t eng_vis(uint32_t n) { return ENGINE_ORDER[n % NENG_SHOWN]; }
 static uint32_t eng_rank(uint32_t e)
 {

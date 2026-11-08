@@ -1,0 +1,103 @@
+# Builds the NEON firmware (Felucca with the NEON engine) on GitHub's Linux machines, where JieLi's toolchain runs
+# natively, and publishes it as the "neon-latest" release: Releases > neon-latest > neon.fwsc. Then runs Felucca's
+# whole test suite against the build. Runs on every push to main, or by hand (Actions > Build NEON firmware > Run).
+name: Build NEON firmware
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write          # to publish the release
+
+concurrency:
+  group: build-neon
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Python packages (the UI font and icons are rasterised at build time)
+        run: pip install Pillow fonttools
+
+      - name: Cache the JieLi toolchain and SDK files
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.jieli
+            ~/fw-AC79_AIoT_SDK
+          key: jieli-linux-toolchain-ac79-sdk-v1.2.1-2023-12-13
+
+      - name: JieLi toolchain (clang 4.0.1 for pi32v2)
+        run: |
+          if [ ! -x "$HOME/.jieli/toolchain/pi32v2/bin/clang" ]; then
+            sh tools/get_toolchain.sh
+          fi
+          "$HOME/.jieli/toolchain/pi32v2/bin/clang" --version | head -1
+
+      - name: JieLi AC79 SDK (the package uses three of its files)
+        run: |
+          SDK="$HOME/fw-AC79_AIoT_SDK"
+          TAG=AC79NN_SDK_V1.2.1_2023-12-13
+          URL=https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK.git
+          if [ ! -f "$SDK/cpu/wl82/tools/uboot.boot" ]; then
+            rm -rf "$SDK"
+            # only cpu/wl82/tools is needed; fall back to a whole shallow clone if the server refuses a partial one
+            if git clone --depth 1 --filter=blob:none --sparse --branch "$TAG" "$URL" "$SDK"; then
+              git -C "$SDK" sparse-checkout set cpu/wl82/tools
+            fi
+            if [ ! -f "$SDK/cpu/wl82/tools/uboot.boot" ]; then
+              rm -rf "$SDK"
+              git clone --depth 1 --branch "$TAG" "$URL" "$SDK"
+            fi
+          fi
+          ls -l "$SDK/cpu/wl82/tools/uboot.boot"
+
+      - name: Build
+        run: ./build.sh
+
+      - name: Name the package
+        run: |
+          mkdir -p dist
+          cp build/felucca.fwsc dist/neon.fwsc
+          cp build/felucca.bin dist/neon-app.bin
+          (cd dist && sha256sum neon.fwsc neon-app.bin > SHA256SUMS)
+          ls -l dist
+
+      - name: Keep the build with this run
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-firmware-${{ github.sha }}
+          path: dist/
+
+      - name: Publish as the neon-latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete neon-latest --cleanup-tag --yes 2>/dev/null || true
+          gh release create neon-latest dist/neon.fwsc dist/neon-app.bin dist/SHA256SUMS \
+            --target "$GITHUB_SHA" --prerelease --title "NEON (latest build)" \
+            --notes "Felucca with the NEON synthwave engine, built from ${GITHUB_SHA::7}.
+
+          **Try it without an FM-1:** open https://joakimeriksson.github.io/fm1-emu, load \`neon.fwsc\`, press Start. NEON is the last engine: pick it with the PRESETS page's ENG knob.
+
+          **Install it on an FM-1** (at your own risk; back up with the editor first): \`python3 tools/fm1_install.py neon.fwsc\`, or Felucca's web installer. M-VAVE's updater always takes the FM-1 back to the official firmware.
+
+          Experimental: built and tested on a computer (Felucca's host test suite), not yet played on a real FM-1."
+
+      - name: Felucca's test suite
+        env:
+          AC79_SDK: /home/runner/fw-AC79_AIoT_SDK
+        run: sh tests/run_tests.sh

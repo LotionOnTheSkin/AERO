@@ -37,6 +37,8 @@ static const char *const PRESET_CAT[16] = {
     "DD",                        /* 13 SLICE: CHOP, STUTTER */
     "LLBBKKPD",                  /* 14 ADPCM: SQUARE LEAD, PULSE LEAD, SAW BASS, SUB BASS, SOFT SINE, ORGAN, ECHO PAD,
                                   * NOISE HAT */
+    "PPBBLLKUPPBB",              /* 15 NEON: NEON SKY, SUMMERS, DRIVE BS, NIGHT BS, HERO LD, BRASS 85, STAB, ARP PLK,
+                                  * VHS STR, MIDNIGHT, SUB DRV, OUTRUN */
 };
 static uint32_t preset_cat(uint32_t e, uint32_t k)    /* factory preset k of engine e */
 {

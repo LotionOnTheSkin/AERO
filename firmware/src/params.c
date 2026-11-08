@@ -80,8 +80,14 @@ static const char *const N_ENGNAME[] = {"ANALOG", FELUCCA_FM4 ? "DIGITAL" : "-",
 #endif
 #if FELUCCA_ADPCM
                                              "ADPCM",
+#elif FELUCCA_NEON
+                                             "-",       /* 14: reserved for ADPCM (engines.c ENG_RESERVED) */
+#endif
+#if FELUCCA_NEON
+                                             "NEON",
 #endif
 };
+typedef char engname_fits[sizeof N_ENGNAME / sizeof N_ENGNAME[0] == NENGINES ? 1 : -1];   /* one name an engine number */
 
 static const char *const N_SLOT[] = {"A", "B", "C", "D", 0};   /* G_SLOT 1..4 (F_INT: the names split its range) */
 #define PD(l, f, mn, mx, df) {l, f, mn, mx, df, 0, 0}

@@ -11,8 +11,19 @@ typedef struct {
     uint32_t user, filter;
 } favorites_t;
 static favorites_t favorites __attribute__((section(".pool")));
+/* NEON (engine 15, 12 presets) keeps its favourites in the last 2 bytes of SLICE's row (engine 13: 2 presets, its bits
+ * 0..1; bytes 30..31 no firmware used): SLICE's own reach stops before them */
+#define FAV_NEON_AT 240u
 static uint8_t *fav_bit(uint32_t engine, uint32_t preset, uint8_t *mask)   /* the byte and bit of a factory preset */
 {
+#if FELUCCA_NEON
+    if (engine == ENGI_NEON && preset < 256u - FAV_NEON_AT) {
+        *mask = (uint8_t)(1u << (preset % 8u));
+        return &favorites.factory[13][(FAV_NEON_AT + preset) / 8u];
+    }
+    if (engine == 13u && preset >= FAV_NEON_AT)
+        return 0;
+#endif
     if (engine < NENGINES && engine < FAV_ENGINES && preset < 256u) {
         *mask = (uint8_t)(1u << (preset % 8u));
         return &favorites.factory[engine][preset / 8u];

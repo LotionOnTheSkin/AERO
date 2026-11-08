@@ -35,12 +35,24 @@
 #if FELUCCA_ADPCM && !FELUCCA_SLICE
 #error "FELUCCA_ADPCM needs FELUCCA_SLICE (ADPCM is engine 14, after SLICE)"
 #endif
-#define NENGINES (13 + FELUCCA_SLICE + FELUCCA_ADPCM)   /* SLICE (13), then ADPCM (14): the other engines keep their
-                                                         * numbers */
+#ifndef FELUCCA_NEON
+#define FELUCCA_NEON 1           /* the NEON engine (eng_neon.c, synthwave: supersaw, Juno PWM, sub bass), engine 15 */
+#endif
+#if FELUCCA_NEON && !FELUCCA_SLICE
+#error "FELUCCA_NEON needs FELUCCA_SLICE (NEON is engine 15, after SLICE and ADPCM's 14)"
+#endif
+/* SLICE (13), then ADPCM (14), then NEON (15): the other engines keep their numbers. With NEON and without ADPCM,
+ * 14 stays reserved for ADPCM (engines.c: never offered, eng_ok), so a project from either kind of build loads the same */
+#define NENGINES (FELUCCA_NEON ? 16 : 13 + FELUCCA_SLICE + FELUCCA_ADPCM)
 #define ENGI_ADPCM 14u
+#define ENGI_NEON 15u
+#define ENG_RESERVED_14 (FELUCCA_NEON && !FELUCCA_ADPCM)   /* 14 held for ADPCM, not built */
+/* a stored engine number (a project's track, a user preset) this build cannot play: past the last, or 14 held for ADPCM
+ * (rejected as before NEON, when 14 was past the last of a build without ADPCM) */
+#define ENG_BAD_STORED(e) ((uint32_t)(e) >= NENGINES || (ENG_RESERVED_14 && (uint32_t)(e) == ENGI_ADPCM))
 #define ENGI_DIGITAL 1u          /* reserved without FELUCCA_FM4: never selectable (eng_ok), its sounds load as FM6 */
-#define NENG_SHOWN (NENGINES - !FELUCCA_FM4)   /* the engines one can pick: PRESETS, the EDIT layer, the editor,
-                                                * in the display order of engines.c ENGINE_ORDER */
+#define NENG_SHOWN (NENGINES - !FELUCCA_FM4 - ENG_RESERVED_14)   /* the engines one can pick: PRESETS, the EDIT layer,
+                                                * the editor, in the display order of engines.c ENGINE_ORDER */
 #define UP_SLOTS 32u             /* user presets (upreset.c) */
 
 /* ------------------------------------------------------- parameters --- */
