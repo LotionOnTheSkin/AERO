@@ -9,6 +9,8 @@ analog drift (MOVE). Everything else is Felucca as it is upstream.
 - **Try it in the browser:** open the [FM-1 emulator](https://joakimeriksson.github.io/fm1-emu), load `neon.fwsc`, press Start.
 - **Play it:** NEON is the last engine. On the PRESETS page, turn the ENG knob to NEON. Twelve presets: NEON SKY,
   SUMMERS, DRIVE BS, NIGHT BS, HERO LD, BRASS 85, STAB, ARP PLK, VHS STR, MIDNIGHT, SUB DRV, OUTRUN.
+- **The look:** Sunset Drive. A sun-and-grid boot screen, the SUNSET palette (deep indigo, magenta, cyan) as the default
+  (MENU > COLOR still offers Felucca's palettes), and Chakra Petch type throughout.
 - **The engine:** `firmware/src/eng_neon.c` (MIT). WAVE (SUPER / PWM / SUB), SPRD, BLND, MOVE, CUT, RES, WARM, KTR.
 - **Status:** experimental. It passes Felucca's host test suite; it has not yet been played on a real FM-1. Its CPU
   cost was estimated on a computer (about 2 to 2.5 ANALOG voices a voice), so it is capped at 6 voices.

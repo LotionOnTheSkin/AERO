@@ -174,15 +174,17 @@ def main():
     a = ap.parse_args()
     RULE[0] = a.rule
     faces = parse(a.header)
-    spec = {n: (font, px) for n, font, px, *_ in gf.preset("inter-tight")}
+    # (NEON: tools/build.py generates the "neon" faces; a face's tracking, its preset's 6th field in em, is set on
+    # purpose: every gap is that much tighter or looser than the font's own, so the error is measured from it)
+    spec = {n: (font, px, tr * px) for n, font, px, _r, _e, tr, *_ in gf.preset("neon")}
     bad = 0
     for name, f in faces.items():
-        font, px = spec[name]
+        font, px, track = spec[name]
         font_hi = ar.open_font(font, px * SS)
         words = LOWER if f["last"] >= ord("z") else UPPER
         # a sparse face (L): the words it can draw (the firmware draws no others in it)
         words = [w for w in words if all(glyph_at(f, ord(ch.upper())) is not None for ch in w)]
-        pairs = [p for s in words for p in measure(f, font_hi, s)]
+        pairs = [(p, v - track) for s in words for p, v in measure(f, font_hi, s)]
         e = sorted(pairs, key=lambda p: -abs(p[1]))
         mx = abs(e[0][1])
         rms = (sum(v * v for _, v in pairs) / len(pairs)) ** 0.5

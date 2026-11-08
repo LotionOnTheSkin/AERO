@@ -187,6 +187,21 @@ static void head_geo(head_geo_t *g, const char *bpm)
     char z[8] = "0000000";
     z[str_len(bpm) < 7u ? str_len(bpm) : 7u] = 0;
     text_ink(&AF_M, z, g->b);
+    {   /* (NEON) the figures' ink differs a little in their tabular cells: the box of the zeros widened to the
+         * leftmost and rightmost ink of any figure, so every tempo sits inside it and the group never moves */
+        int32_t z0[4], d[4], lo = 0, hi = 0;
+        char one[2] = {'0', 0};
+        text_ink(&AF_M, one, z0);
+        for (one[0] = '1'; one[0] <= '9'; one[0]++) {
+            text_ink(&AF_M, one, d);
+            if (d[0] - z0[0] < lo)
+                lo = d[0] - z0[0];
+            if (d[2] - z0[2] > hi)
+                hi = d[2] - z0[2];
+        }
+        g->b[0] += lo;
+        g->b[2] += hi;
+    }
     icon_ink(16, ICON_TEMPO, ib);
     if (icon_cell(&sz, ICON_TEMPO) >= 0)
         c = (int32_t)sz;
@@ -1349,40 +1364,83 @@ static void draw_columns(void)
 }
 
 
-/* The power-on splash (main.c fm1_main, web/emu felucca_web.c; 1.1.5): a RAISE square centred on the screen, square
- * corners (in every style; LINE too: RAISE from the palette's SURF), in it in AF_M, the ink SPL_PAD in from the left:
- * at the top the name and the version, the first line's capitals' top SPL_PAD down; at the bottom the maker and
- * "with community", the last line's capitals' bottom (its baseline) SPL_PAD up from the square's bottom. Both
- * margins are measured to the capitals (the descender of "community" hangs into the bottom one, as off a baseline).
- * The square (176 x 176) is more than the canvas (CV_MAX, 240 x 124): it is filled straight on the screen and its
- * two text bands drawn on it as canvases, the top one from the square's top edge, the bottom one to its bottom edge.
- * In the saved palette (settings_init before it) */
-#define SPL_SQ 176                                  /* the square (even: centred exactly) */
-#define SPL_X0 ((240u - SPL_SQ) / 2u)               /* its top-left on the screen (x and y) */
-#define SPL_PAD 16                                  /* the text's inset: left (its ink), top and bottom (the capitals) */
-#define SPL_PITCH 20                                /* line to line */
-static const char *const SPLASH_LINES[] = {"Felucca", FELUCCA_VERSION, "H\xFCgelton Instruments", "with community"};
-/* a band of two lines, h tall, at y on the screen: the first line's top at ly; the two lines' capitals declared
- * against al0..al1 (mode: AL_V the band centred there, AL_B the last baseline on al1) */
-static void splash_band(uint32_t y, uint32_t h, int32_t ly, const char *const *l, uint32_t mode, int32_t al0,
-                        int32_t al1, const char *tag)
+/* The power-on splash (main.c fm1_main, web/emu felucca_web.c; NEON: Sunset Drive). A synthwave sunrise in the
+ * saved palette (settings_init before it): the sky a THEME tint deepening down to the horizon, a striped sun from
+ * gold (SUNSET; any other palette its TEXT) into THEME, an ACCENT horizon and a THEME perspective grid on the ground;
+ * NEON in AF_L over an ACCENT shadow, the subtitle in AF_S, and the release line at the bottom. GREY and MONO draw it
+ * flat (no blends: they stay gray / black and white): the sun TEXT, the grid THEME, the horizon and shadow TEXT / MID.
+ * Drawn on the canvas in two halves (240 x 120 each, CV_MAX), every text inside the half it is in; no image stored */
+#define NEON_VERSION "0.1"                          /* NEON's own release (the Felucca it is built on: FELUCCA_VERSION) */
+static const char *const SPLASH_LINES[] = {"NEON", "SYNTHWAVE GROOVEBOX", "NEON " NEON_VERSION " \xB7 on Felucca " FELUCCA_VERSION};
+#define SPL_HALF 120                                /* a pass: 240 x 120 */
+#define SPL_SKY0 64                                 /* the sky's gradient: from here (BG above) */
+#define SPL_HZ 150                                  /* the horizon (2 px) */
+#define SPL_GND1 214                                /* the ground's grid: to here (BG below: the release line) */
+#define SPL_SUN_Y 122                               /* the sun: its centre and radius (cut by the horizon) */
+#define SPL_SUN_R 52
+#define SPL_GOLD 0xFE8Cu                            /* (255, 209, 102): SUNSET's sun top */
+static int32_t spl_isqrt(int32_t v)
 {
-    cv_begin(SPL_SQ, h, T_RAISE);
-    GFX_HOOK_ALIGN(0, al0, 0, al1, mode | AL_N(2), tag);
-    cv_text_on(SPL_PAD, ly, &AF_M, l[0], T_TEXT, T_RAISE);
-    cv_text_on(SPL_PAD, ly + SPL_PITCH, &AF_M, l[1], T_TEXT, T_RAISE);
-    cv_blit(SPL_X0, y);
+    int32_t r = 0;
+    while ((r + 1) * (r + 1) <= v)
+        r++;
+    return r;
+}
+/* the sun's stripes: the rows the sky shows through (three bands, wider down to the horizon) */
+static int spl_stripe(int32_t y)
+{
+    return (y >= 127 && y < 129) || (y >= 135 && y < 138) || (y >= 143 && y < 147);
+}
+static void splash_pass(int32_t y0)
+{
+    int plain = ux.pal_i == UI_GREY_INDEX || ux.pal_i == UI_BW_INDEX;   /* GREY, MONO: flat */
+    uint16_t sky = plain ? T_BG : ux_mix(T_BG, T_THEME, 30);
+    uint16_t sun0 = plain ? T_TEXT : ux.pal_i == UI_DEFAULT_INDEX ? (uint16_t)SPL_GOLD : T_TEXT;
+    uint16_t grid = plain ? T_THEME : ux_mix(T_BG, T_THEME, 72);
+    uint16_t hue = plain ? T_TEXT : T_ACCENT;
+    int32_t y, j, top = SPL_SUN_Y - SPL_SUN_R;
+    cv_begin(240, SPL_HALF, T_BG);
+    cv_oy = -y0;
+    for (y = y0; y < y0 + SPL_HALF; y++) {
+        int32_t dy = y - SPL_SUN_Y;
+        if (y >= SPL_SKY0 && y < SPL_HZ && !plain)
+            cv_rect(0, y, 240, 1, ux_mix(T_BG, sky, (y - SPL_SKY0) * 100 / (SPL_HZ - SPL_SKY0)));
+        if (y < SPL_HZ && dy * dy < SPL_SUN_R * SPL_SUN_R && !spl_stripe(y)) {
+            int32_t hw = spl_isqrt(SPL_SUN_R * SPL_SUN_R - dy * dy);
+            cv_rect(120 - hw, y, 2 * hw, 1, plain ? sun0 : ux_mix(sun0, T_THEME, (y - top) * 100 / (SPL_HZ - top)));
+        }
+        if (y == SPL_HZ || y == SPL_HZ + 1)
+            cv_rect(0, y, 240, 1, hue);
+        if (y > SPL_HZ + 1 && y < SPL_GND1) {
+            int32_t t = y - (SPL_HZ + 2), n = SPL_GND1 - (SPL_HZ + 2);
+            for (j = 0; j < 7; j++) {               /* the cross lines, closer together towards the horizon */
+                int32_t ly = (SPL_HZ + 2) + (n * j * j) / 36;
+                if (y == ly)
+                    cv_rect(0, y, 240, 1, grid);
+            }
+            for (j = -10; j <= 10; j++) {           /* the lines to the vanishing point */
+                int32_t x = 120 + j * 4 + (j * 31 * t) / n;
+                cv_rect(x, y, 1 + (t > n / 2), 1, grid);
+            }
+        }
+    }
+    if (y0 == 0) {                                  /* the top half: the name and the subtitle */
+        int32_t w = text_w(&AF_L, SPLASH_LINES[0]), x = (240 - w) / 2;
+        cv_text_flags(x, 14 + 2, &AF_L, SPLASH_LINES[0], plain ? T_MID : hue, T_BG, CVT_SHADOW);
+        cv_text(x, 14, &AF_L, SPLASH_LINES[0], T_TEXT);
+        w = text_w(&AF_S, SPLASH_LINES[1]);
+        cv_text((240 - w) / 2, 52, &AF_S, SPLASH_LINES[1], plain ? T_MID : hue);
+    } else {                                        /* the bottom half: the release line */
+        int32_t w = text_w(&AF_S, SPLASH_LINES[2]);
+        cv_text((240 - w) / 2, 220, &AF_S, SPLASH_LINES[2], T_MID);
+    }
+    cv_blit(0, (uint32_t)y0);
+    cv_oy = 0;
 }
 static void draw_splash(void)
 {
-    int32_t h = SPL_PAD - AF_M_CAP_Y + SPL_PITCH + AF_M.h;     /* a band: its two lines, the descenders in */
-    int32_t lb = h - SPL_PAD - AF_M_CAP_H - AF_M_CAP_Y;         /* the bottom band's last line: its top */
-    lcd_fill(0, 0, 240, 240, T_BG);
-    lcd_fill(SPL_X0, SPL_X0, SPL_SQ, SPL_SQ, T_RAISE);
-    splash_band(SPL_X0, (uint32_t)h, SPL_PAD - AF_M_CAP_Y, SPLASH_LINES, AL_V, SPL_PAD,
-                SPL_PAD + SPL_PITCH + AF_M_CAP_H, "splash name + version SPL_PAD from the top");
-    splash_band(SPL_X0 + SPL_SQ - (uint32_t)h, (uint32_t)h, lb - SPL_PITCH, SPLASH_LINES + 2, AL_B, 0, h - SPL_PAD,
-                "splash maker's baseline SPL_PAD from the bottom");
+    splash_pass(0);
+    splash_pass(SPL_HALF);
     lcd_sync();
 }
 

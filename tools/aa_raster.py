@@ -158,6 +158,8 @@ def raster_font(spec, px, chars, tracking=0.0, gamma=1.0, tabular=True, kern_min
                 continue
             if a.isdigit() and b.isdigit():
                 continue                       # tabular figures never kern
+            if tabular and a in WHOLE and b in WHOLE:
+                continue                       # .. nor with the point between them: a number keeps an even pitch
             d = (font_hi.getlength(a + b, features=feats) - lens[a] - lens[b]) / SS
             d16 = int(round(d * 16))
             if abs(d16) >= kern_min:

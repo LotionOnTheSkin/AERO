@@ -86,6 +86,7 @@ static struct {
     uint16_t bg, surf, text, theme, accent;
     uint16_t mid, dim, line, sel, tint, ink, rec, raise, key, lane, grid, ok;
     uint8_t light, mono;
+    uint8_t pal_i;               /* the palette in use: its index, NPALETTES = CUSTOM (NEON's splash: ui_draw.c) */
     uint8_t style;               /* MENU > STYLE (ui.c style_apply): ST_FLAT, ST_LINE */
     uint32_t gen;                /* bumped by palette_set (the text ramps follow) */
 } ux;
@@ -157,6 +158,7 @@ static void palette_set(uint32_t i)
     uint16_t surf;
     i %= NPALETTES;
     ux.mono = !cust && i == UI_GREY_INDEX;
+    ux.pal_i = (uint8_t)(cust ? NPALETTES : i);
     ux.pal[0] = p->c1; ux.pal[1] = p->c2; ux.pal[2] = p->c3; ux.pal[3] = p->primary; ux.pal[4] = p->secondary;
     ux.bg = p->c1; ux.text = p->c3; ux.theme = p->c2; ux.accent = p->secondary; ux.rec = p->primary;
     ux.mono = !cust && i == UI_GREY_INDEX;
@@ -599,6 +601,7 @@ static int32_t text_run(int32_t x, int32_t y, const aafont_t *f, const char *s, 
  * truest and no glyph is a whole step from its true place (tools/aa_raster.py, text_spacing_test.py).
  * A glyph with one phase (its phases share one bitmap: figures and .) sits at the rounded pen, as when it
  * is drawn alone at text_w of what precedes it (ui_draw.c roll_text). */
+#define CVT_SHADOW 64u   /* flags: a shadow, the same text drawn over it next (NEON's splash): the lint lets the two overlap */
 static int32_t cv_text_flags(int32_t x, int32_t y, const aafont_t *f, const char *s, uint16_t fg, uint16_t bg,
                              uint32_t flags)
 {
