@@ -398,6 +398,8 @@ static uint32_t large_kind(void)
     return g == GR_BROWSE || g == GR_SLOTS || g == GR_USER || g == GR_PATS || g == GR_SONG || g == GR_ROLL ||
            g == GR_SLICES || g == GR_EVENTS ? LK_LABEL : LK_TALL;
 }
+/* NEON: SUNSET DRIVE shown (the DRIVE page, no layer over it): no cards, no panel; the view fills H_HEAD .. Y_FOOT */
+static int drive_on(void) { return !ui.home && !ui.layer && cur_page()->graph == GR_DRIVE; }
 /* the geometry of the page shown: the cards' height, the panel's top and height */
 static uint32_t card_h(void) { return large_kind() == LK_TALL ? LG_CARD_H : CARD_H; }
 static uint32_t graph_y(void) { return large_kind() == LK_TALL ? LG_Y_GRAPH : Y_GRAPH; }

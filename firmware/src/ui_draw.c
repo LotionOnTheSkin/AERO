@@ -471,6 +471,8 @@ static void draw_gaps(uint32_t y, uint32_t h)
 static void draw_frame(void)
 {
     uint32_t ch = card_h(), gy = graph_y(), gh = graph_h();   /* (MENU > LARGE: tall cards, a strip) */
+    if (drive_on())                                    /* NEON: SUNSET DRIVE covers H_HEAD .. Y_FOOT itself */
+        return;
     gap_rows(H_HEAD, Y_LABEL);
     gap_rows(Y_LABEL + ch, gy);
     gap_rows(gy + gh, Y_FOOT);
@@ -993,6 +995,8 @@ static void draw_columns(void)
     char val[12];
     const char *unit;
     (void)motion_mask(song.sel, card_mot_mask);       /* (PLAY OFF: no scan) */
+    if (drive_on())                                    /* NEON: SUNSET DRIVE, no cards */
+        return;
     if (ui.home) {
         for (c = 0; c < 4u; c++) {
             int16_t *vp;

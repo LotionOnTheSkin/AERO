@@ -175,13 +175,17 @@ static int select_page(void)
     turn(EN_SELECT, 1);
     ok &= title_is("CLOCK");
     turn(EN_SELECT, 1);
+    ok &= title_is("DRIVE");                            /* (NEON: SUNSET DRIVE) */
+    turn(EN_SELECT, 1);
     ok &= ui.home;
+    turn(EN_SELECT, -1);
+    ok &= title_is("DRIVE");
     turn(EN_SELECT, -1);
     ok &= title_is("CLOCK");
     b0 = song.g[G_BPM];
     turn(EN_K1, 1);
     ok &= song.g[G_BPM] == b0 + 1;                      /* CLOCK's KNOB 1: the tempo */
-    bad += check("  PAGE: HOME -> MIXER -> CLOCK -> HOME (as HOME's taps), back too; CLOCK's KNOB 1 still the tempo", ok);
+    bad += check("  PAGE: HOME -> MIXER -> CLOCK -> DRIVE -> HOME (as HOME's taps), back too; CLOCK's KNOB 1 still the tempo", ok);
 
     go_title("EDIT 1"); frame();
     for (i = 0; i < 12u && ok; i++) {                   /* EDIT's pages: only the ones the engine shows */

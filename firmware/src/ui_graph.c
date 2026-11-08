@@ -2230,12 +2230,135 @@ static void graph_song(void)
                      i < 4u ? "[K3] ADD SECTION" : "[SAVE] PROJECT A-D", T_MID, T_SURF, x0 - 10 - SG_X0);
     }
 }
+/* NEON: SUNSET DRIVE (the DRIVE page: HOME tapped from CLOCK). The sunset of the splash, alive, over H_HEAD .. Y_FOOT
+ * (178 rows; the header and footer as on every page). The ground's grid rolls toward the viewer one line a beat (the
+ * sequencer's beat_pos: it follows BPM and the external clock, and stands still when stopped); the sun swells and
+ * brightens with the loudest track; its stripes slide down a stripe a beat; the horizon glows with the bass (the tracks
+ * whose sound is a BASS, category.c; none: the loudest); a light per track in the sky shines with that track. Levels as
+ * the MIXER's meters (track_t.peak, read and cleared each frame; meter_px: 60 dB), falling ~10 % a frame.
+ * GREY and MONO draw it flat (only their tokens: no blends; the lights on or off). Drawn on the canvas in two passes of
+ * 240 x 89, only when the picture changes (drv.sig: the beat's 1/64, the levels' 1/32, the palette) */
+#define DRV_H (Y_FOOT - H_HEAD)                         /* 178 */
+#define DRV_PASS 89u
+#define DRV_HZ 106                                      /* the horizon, rows into the view (2 rows) */
+#define DRV_SUN_Y 92                                    /* the sun's centre and its radius at rest */
+#define DRV_SUN_R 44
+#define DRV_LINES 8                                     /* the ground's cross lines in view */
+#define DRV_GOLD 0xFE8Cu                                /* (255, 209, 102): SUNSET's sun top (as the splash's) */
+static struct { uint8_t lv[NTRK], ph; uint32_t sig; } drv;
+static int drv_plain(void) { return ux.pal_i == UI_GREY_INDEX || ux.pal_i == UI_BW_INDEX; }
+static uint32_t drv_isqrt(uint32_t v)
+{
+    uint32_t r = 0;
+    while ((r + 1u) * (r + 1u) <= v)
+        r++;
+    return r;
+}
+static void drive_pass(int32_t y0, uint32_t ph, uint32_t loud, uint32_t bass)
+{
+    int plain = drv_plain();
+    uint16_t sky = plain ? T_BG : ux_mix(T_BG, T_THEME, 30);
+    uint16_t sun0 = ux.pal_i == UI_DEFAULT_INDEX ? (uint16_t)DRV_GOLD : T_TEXT;
+    uint16_t grid = plain ? T_THEME : ux_mix(T_BG, T_THEME, 72);
+    uint16_t hz = plain ? T_TEXT : ux_mix(T_BG, T_ACCENT, 50 + (int32_t)bass * 50 / 255);
+    int32_t r = DRV_SUN_R + (int32_t)loud * 5 / 255, top = DRV_SUN_Y - r, gh = DRV_H - (DRV_HZ + 2), y, j;
+    int32_t slide = (int32_t)ph * 9 / 256;              /* the stripes: a stripe's pitch a beat */
+    uint32_t k;
+    cv_begin(240, DRV_PASS, T_BG);
+    cv_oy = -y0;
+    for (y = y0; y < y0 + (int32_t)DRV_PASS && y < DRV_H; y++) {
+        int32_t dy = y - DRV_SUN_Y, up = DRV_HZ - y;
+        if (!plain && y >= 20 && y < DRV_HZ) {          /* the sky, deepening to the horizon; its last rows glow */
+            uint16_t c = ux_mix(T_BG, sky, (y - 20) * 100 / (DRV_HZ - 20));
+            if (up <= 4)
+                c = ux_mix(c, T_ACCENT, (int32_t)bass * (5 - up) * 7 / 255);
+            cv_rect(0, y, 240, 1, c);
+        }
+        if (y < DRV_HZ && dy * dy < r * r) {            /* the sun, striped in its lower part */
+            int stripe = up < 36 && ((up + slide) % 9) < 1 + (36 - up) / 12;
+            if (!stripe) {
+                int32_t hw = (int32_t)drv_isqrt((uint32_t)(r * r - dy * dy));
+                uint16_t c = plain ? T_TEXT : ux_mix(sun0, T_THEME, (y - top) * 100 / (DRV_HZ - top));
+                if (!plain)
+                    c = ux_mix(c, T_TEXT, (int32_t)loud * 22 / 255);
+                cv_rect(120 - hw, y, 2 * hw, 1, c);
+            }
+        }
+        if (y == DRV_HZ || y == DRV_HZ + 1)
+            cv_rect(0, y, 240, 1, hz);
+        if (y > DRV_HZ + 1) {                           /* the ground: cross lines rolling in, lines to the vanishing point */
+            int32_t t = y - (DRV_HZ + 2);
+            for (j = 0; j < DRV_LINES; j++) {
+                int32_t q = j * 256 + (int32_t)ph, n = DRV_LINES * 256;
+                if (y == DRV_HZ + 2 + (int32_t)((int64_t)gh * q * q / ((int64_t)n * n)))
+                    cv_rect(0, y, 240, 1, plain ? grid : ux_mix(T_BG, grid, 35 + 65 * q / n));
+            }
+            for (j = -10; j <= 10; j++)
+                cv_rect(120 + j * 4 + (j * 31 * t) / gh, y, 1 + (t > gh / 2), 1, grid);
+        }
+    }
+    for (k = 0; k < NTRK; k++) {                        /* the tracks' lights, high in the sky, clear of the sun */
+        int32_t lx = k < 2u ? 22 + (int32_t)k * 34 : 184 + ((int32_t)k - 2) * 34, ly = 10 + (int32_t)(k & 1u) * 14;
+        uint16_t c;
+        if (plain)
+            c = drv.lv[k] > 64u ? T_TEXT : T_DIM;
+        else
+            c = ux_mix(T_BG, (k & 1u) ? T_ACCENT : T_THEME, 25 + (int32_t)drv.lv[k] * 75 / 255);
+        cv_rect(lx, ly, 3, 3, c);
+        if (drv.lv[k] > 128u) {                         /* loud: a twinkle (a cross) */
+            cv_rect(lx - 2, ly + 1, 7, 1, c);
+            cv_rect(lx + 1, ly - 2, 1, 7, c);
+        }
+    }
+    cv_blit(0, (uint32_t)(H_HEAD + y0));
+    cv_oy = 0;
+}
+static void draw_drive(void)
+{
+    uint32_t k, ph, loud = 0, bass = 0, nb = 0, sig;
+    for (k = 0; k < NTRK; k++) {                        /* the levels, as the MIXER's meters */
+        track_t *t = &trk[k];
+        uint32_t m = t->p[P_MUTE] ? 0u : (uint32_t)meter_px(t->peak) * 255u / (TS_MH - 2u);
+        t->peak = 0;
+        if (m > 255u)
+            m = 255u;
+        drv.lv[k] = (uint8_t)(m >= drv.lv[k] ? m : drv.lv[k] - (drv.lv[k] / 10u + 1u));
+        if (drv.lv[k] > loud)
+            loud = drv.lv[k];
+        if (!t->user && preset_cat(t->eng_req % NENGINES, t->preset) == CAT_BASS) {
+            nb++;
+            if (drv.lv[k] > bass)
+                bass = drv.lv[k];
+        }
+    }
+    if (!nb)
+        bass = loud;
+    if (song.playing) {
+        uint32_t q = beat_samples();
+        ph = q ? (beat_pos % q) * 256u / q : 0u;
+        drv.ph = (uint8_t)ph;
+    }
+    ph = drv.ph;
+    sig = (ph >> 2) * 2654435761u ^ (loud >> 3) * 40503u ^ (bass >> 3) * 9973u ^ ux.gen * 7919u;
+    for (k = 0; k < NTRK; k++)
+        sig = sig * 31u + (drv.lv[k] >> 3);
+    if (!ui.force && sig == drv.sig)
+        return;
+    drv.sig = sig;
+    drive_pass(0, ph, loud, bass);
+    drive_pass((int32_t)DRV_PASS, ph, loud, bass);
+}
+
 static void draw_graph(void)
 {
     const page_t *pg = cur_page();
     const track_t *t = TSEL;
     uint16_t c = ACC;
     uint32_t sig;
+    if (drive_on()) {                                /* NEON: SUNSET DRIVE */
+        draw_drive();
+        return;
+    }
     if (!ui.home && pg->graph == GR_TRK) {
         draw_tracks();
         return;

@@ -11,6 +11,9 @@ analog drift (MOVE). Everything else is Felucca as it is upstream.
   SUMMERS, DRIVE BS, NIGHT BS, HERO LD, BRASS 85, STAB, ARP PLK, VHS STR, MIDNIGHT, SUB DRV, OUTRUN.
 - **The look:** Sunset Drive. A sun-and-grid boot screen, the SUNSET palette (deep indigo, magenta, cyan) as the default
   (MENU > COLOR still offers Felucca's palettes), and Chakra Petch type throughout.
+- **SUNSET DRIVE:** tap HOME from HOME to step HOME > MIXER > CLOCK > **DRIVE**: a visualizer where the grid rolls
+  toward you one line a beat (it follows the tempo and stops when you stop), the sun swells with the loudest track,
+  the horizon glows with the bass, and a light per track shines in the sky.
 - **The engine:** `firmware/src/eng_neon.c` (MIT). WAVE (SUPER / PWM / SUB), SPRD, BLND, MOVE, CUT, RES, WARM, KTR.
 - **Status:** experimental. It passes Felucca's host test suite; it has not yet been played on a real FM-1. Its CPU
   cost was estimated on a computer (about 2 to 2.5 ANALOG voices a voice), so it is capped at 6 voices.
