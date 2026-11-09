@@ -1286,7 +1286,9 @@ static const char *eng_abbr(const char *name)
 static void list_row(int32_t y, int sel, const char *tag, uint16_t tc, const char *name, uint16_t nc, int32_t x1)
 {
     uint16_t bg = sel ? T_THEME : T_SURF;
-    if (sel)
+    if (sel && aero_glass())                         /* AERO: an aqua glossy pill */
+        cv_gloss(6, y, 228, 16, 8, GLOSS_AQUA);
+    else if (sel)
         cv_rrect(6, y, 228, 16, 4, T_THEME, T_SURF);
     GFX_HOOK_ALIGN(0, y, 0, y + 16, AL_V, "list row text centred up/down");
     cv_text_on(14, y + LIST_TY, &AF_M, tag, sel ? T_INK : tc, bg);
@@ -1608,7 +1610,7 @@ static void knob_arc(int32_t x, int32_t y, int32_t r, const uint8_t *cov, const 
                      uint16_t tr, uint16_t vc, uint16_t bg)
 {
     const uint16_t *rt = ramp(tr, bg), *rv = ramp(vc, bg);
-    int32_t i, j, m;
+    int32_t i, j, m, glass = aero_glass();
     for (j = 0; j < r; j++)
         for (i = 0; i < r; i++) {
             uint32_t k = (uint32_t)(j * r + i), a = (cov[k >> 1] >> ((k & 1u) ? 0 : 4)) & 15u;
@@ -1620,6 +1622,10 @@ static void knob_arc(int32_t x, int32_t y, int32_t r, const uint8_t *cov, const 
                 int32_t px = m < 2 ? x + r + i : x + r - 1 - i, py = (m == 0 || m == 3 ? y + r - 1 - j : y + r + j) + cv_oy;
                 if (s < -KA_END || s > KA_END || (uint32_t)px >= cv_w || (uint32_t)py >= cv_h)
                     continue;
+                if (glass) {                         /* AERO: over what is there */
+                    over_rv(s >= lo && s <= hi ? vc : tr);
+                    cv_px[(uint32_t)py * cv_w + (uint32_t)px] = over_px(cv_px[(uint32_t)py * cv_w + (uint32_t)px], a);
+                } else
                 cv_px[(uint32_t)py * cv_w + (uint32_t)px] = (s >= lo && s <= hi ? rv : rt)[a];
             }
         }
@@ -1664,7 +1670,11 @@ static void track_strip(uint32_t c, uint32_t sel, uint32_t st, uint32_t mute, ui
 {
     int32_t gw = CARD_W - 10, m = ts.meter[c] * gw / (TS_MH - 2), fx = (int32_t)lvl * gw / 127;
     uint16_t vc = mute ? T_DIM : T_THEME;
+    cv_at(LG_Y_GRAPH);
     cv_begin(CARD_W, LG_H_GRAPH, T_BG);
+    if (aero_glass())                                /* AERO: a glass strip */
+        cv_glass(0, 0, CARD_W, LG_H_GRAPH, 7, GL_PANEL);
+    else
     cv_rrect(0, 0, CARD_W, LG_H_GRAPH, 5, T_SURF, T_BG);
     cv_icon_on(4, 4, 16, trk_icon(c, sel), lit ? (sel ? T_TEXT : T_ACCENT) : sel ? T_ACCENT : T_MID, T_SURF);
     if (st)
@@ -1721,7 +1731,11 @@ static void draw_tracks(void)
             track_strip(c, sel, st, mute, arm, hot, lvl, b, lit);
             continue;
         }
+        cv_at(Y_GRAPH);
         cv_begin(CARD_W, H_GRAPH, T_BG);
+        if (aero_glass())                            /* AERO: a glass strip */
+            cv_glass(0, 0, CARD_W, H_GRAPH, 7, GL_PANEL);
+        else
         cv_rrect(0, 0, CARD_W, H_GRAPH, 5, T_SURF, T_BG);
         cv_icon_on(4, 5, 16, trk_icon(c, sel), lit ? (sel ? T_TEXT : T_ACCENT) : sel ? T_ACCENT : T_MID, T_SURF);
         if (st)
@@ -1932,6 +1946,18 @@ static void graph_scope(uint16_t c)
             trig = i;
             break;
         }
+    if (aero_glass() && cv_h == H_GRAPH) {          /* AERO: bubbles in the glass, the wave on a white glow */
+        cv_bubble(203, 31, 9);
+        cv_bubble(218, 55, 4);
+        cv_bubble(23, 105, 6);
+        for (x = 0; x < PANEL_W; x++) {
+            int32_t y = cy - snap[trig + (uint32_t)x] * a / peak;
+            if (x)
+                cv_line_t(PANEL_X0 - 1 + x, py - 2, PANEL_X0 + x, y - 2, RGB(0xF2, 0xFA, 0xFF), 6);
+            py = y;
+        }
+        py = cy;
+    } else
     cv_rect(PANEL_X0, cy, PANEL_W, 1, T_RAISE);
     for (x = 0; x < PANEL_W; x++) {
         int32_t y = cy - snap[trig + (uint32_t)x] * a / peak;    /* auto-scaled */
@@ -2372,7 +2398,11 @@ static void draw_graph(void)
     if (!ui.force && sig == ui.graph_sig)
         return;
     ui.graph_sig = sig;
+    cv_at(graph_y());
     cv_begin(240, graph_h(), T_BG);
+    if (aero_glass())                                /* AERO: a glass panel (HOME's scope: clearer) */
+        cv_glass(3, 0, 234, graph_h(), 8, ui.home && strip_kind() == SK_NONE ? GL_SCOPE : GL_PANEL);
+    else
     cv_rrect(3, 0, 234, graph_h(), 5, T_SURF, T_BG);   /* the panel (MENU > LARGE: the strip) */
     cv_bg = T_SURF;                                  /* (text drawn with cv_text lands on it) */
     cv_oy = GOY;                                     /* graphs on a 100 px scale */

@@ -195,6 +195,47 @@ static int palette_stored_ok(uint32_t v) { return v < 20u || (v >= UI_PAL_TAG &&
 
 static inline uint16_t swap16(uint32_t c) { return (uint16_t)(((c >> 8) & 0xFFu) | ((c & 0xFFu) << 8)); }
 
+/* ------------------------------------------------------ AERO glass --- */
+/* AQUA in FLAT (AERO's default look): the main page's ground is a sky, deepening upward (#3AA0E8 -> #9FDCFF at
+ * 55 % -> #E6F7FF), under translucent glass: the header and footer bars, the cards, the panel, the mixer's strips
+ * (glass over the sky: each row white at its own opacity over the sky's row, so the glass is a function of the screen
+ * row). A canvas learns its screen row from cv_at (before cv_begin): a canvas cleared to BG is then cleared to the
+ * ground of its rows. With the glass on, whatever is anti-aliased (text, icons, corners, keycaps, knobs) blends over
+ * what is on the canvas, not over one known colour: on a flat ground the pixels are the same as the ramps'. Every
+ * other palette and LINE: as before, bit for bit */
+#define AERO_HEAD_H 24                   /* the header bar: rows 0 .. 23 (ui.c H_HEAD) */
+#define AERO_FOOT_Y 202                  /* the footer bar: rows 202 .. 239 (ui.c Y_FOOT) */
+static int32_t cv_sy = -1;               /* the screen row of the next canvas's row 0 (cv_at), -1 unknown */
+static int32_t cv_sy0 = -1;              /* .. of this canvas (cv_begin took it) */
+static int aero_glass_off;               /* tests/text_ref_test.c: the ramps' model (one ground under each glyph) */
+static int aero_glass(void) { return ux.pal_i == UI_AQUA_INDEX && ux.style == ST_FLAT && !aero_glass_off; }
+static void cv_at(int32_t y) { cv_sy = y; }
+#define AERO_WHITE 0xFFFFu
+#define AERO_LABEL RGB(0x0A, 0x6E, 0xAA)  /* a card's label on the glass (the design's #0A7FC2, deepened: 5:1 on it) */
+static uint16_t aero_sky(int32_t y)
+{
+    static const uint16_t A = RGB(0x3A, 0xA0, 0xE8), B = RGB(0x9F, 0xDC, 0xFF), C = RGB(0xE6, 0xF7, 0xFF);
+    if (y < 0) y = 0;
+    if (y > 239) y = 239;
+    return y < 132 ? ux_mix(A, B, y * 100 / 132) : ux_mix(B, C, (y - 132) * 100 / 107);
+}
+/* white at a% (0..100) over the sky's row y */
+static uint16_t aero_frost(int32_t y, int32_t a) { return ux_mix(aero_sky(y), AERO_WHITE, a); }
+/* the ground at screen row y: the header bar (white 75 % -> 40 % at its middle, a step to 20 %, -> 45 %; a bright
+ * last row), the footer bar (a bright first row, white 80 % -> 55 %), else the sky */
+static uint16_t aero_ground(int32_t y)
+{
+    if (y < AERO_HEAD_H) {
+        if (y == AERO_HEAD_H - 1) return aero_frost(y, 90);
+        return aero_frost(y, y < 12 ? 75 - y * 35 / 11 : 20 + (y - 12) * 25 / 10);
+    }
+    if (y >= AERO_FOOT_Y) {
+        if (y == AERO_FOOT_Y) return aero_frost(y, 95);
+        return aero_frost(y, 80 - (y - AERO_FOOT_Y) * 25 / 37);
+    }
+    return aero_sky(y);
+}
+
 /* ------------------------------------------------------------ canvas --- */
 static void cv_begin(uint32_t w, uint32_t h, uint16_t bg)
 {
@@ -209,10 +250,31 @@ static void cv_begin(uint32_t w, uint32_t h, uint16_t bg)
     cv_cy0 = 0;
     cv_cy1 = (int16_t)h;
     cv_bg = bg;
+    cv_sy0 = cv_sy;
+    cv_sy = -1;
     n = w * h;
+    if (cv_sy0 >= 0 && bg == ux.bg && aero_glass()) {   /* AERO: the ground of its rows */
+        uint32_t r, k;
+        for (r = 0; r < h; r++) {
+            uint16_t g = swap16(aero_ground(cv_sy0 + (int32_t)r));
+            for (k = 0; k < w; k++)
+                cv_px[r * w + k] = g;
+        }
+        return;
+    }
     for (i = 0; i < n; i++)
         cv_px[i] = s;
 }
+/* the canvas pixel at (x, y) (cv_oy applied), unswapped; outside: BG */
+static uint16_t cv_get(int32_t x, int32_t y)
+{
+    y += cv_oy;
+    if ((uint32_t)x < cv_w && (uint32_t)y < cv_h)
+        return swap16(cv_px[(uint32_t)y * cv_w + (uint32_t)x]);
+    return ux.bg;
+}
+/* the screen row of canvas row y (cv_oy applied); unknown: the panel's middle */
+static int32_t cv_screen_y(int32_t y) { return cv_sy0 >= 0 ? cv_sy0 + y + cv_oy : 120; }
 
 static void cv_blit(uint32_t x, uint32_t y)
 {
@@ -313,7 +375,7 @@ static uint32_t rr_cov(int32_t r, int32_t i, int32_t j)
  * behind it): the flat look's cards, panels, rows, bars and buttons */
 static void cv_rrect(int32_t x, int32_t y, int32_t w, int32_t h, int32_t r, uint16_t c, uint16_t under)
 {
-    int32_t i, j;
+    int32_t i, j, glass = aero_glass();
     GFX_HOOK_CELL(x, y + cv_oy, x + w, y + h + cv_oy);   /* (the lint: what is drawn on it stays inside it) */
     if (r < 0) r = -r;                           /* (-r: rounded in every style: a keycap-like cushion) */
     else if (ux.style == ST_LINE) r = 0;         /* LINE: square cursors, selections and fills (FLAT: rounded) */
@@ -330,10 +392,131 @@ static void cv_rrect(int32_t x, int32_t y, int32_t w, int32_t h, int32_t r, uint
         for (i = 0; i < r; i++) {
             uint32_t a = rr_cov(r, i, j);
             uint16_t px = a >= 16u ? c : a == 0u ? under : ux_mix(under, c, (int32_t)(a * 100u / 16u));
+            if (glass && a < 16u) {                  /* AERO: over what is there */
+                int32_t q = (int32_t)(a * 100u / 16u);
+                cv_pset(x + i, y + j, ux_mix(cv_get(x + i, y + j), c, q));
+                cv_pset(x + w - 1 - i, y + j, ux_mix(cv_get(x + w - 1 - i, y + j), c, q));
+                cv_pset(x + i, y + h - 1 - j, ux_mix(cv_get(x + i, y + h - 1 - j), c, q));
+                cv_pset(x + w - 1 - i, y + h - 1 - j, ux_mix(cv_get(x + w - 1 - i, y + h - 1 - j), c, q));
+                continue;
+            }
             cv_pset(x + i, y + j, px);
             cv_pset(x + w - 1 - i, y + j, px);
             cv_pset(x + i, y + h - 1 - j, px);
             cv_pset(x + w - 1 - i, y + h - 1 - j, px);
+        }
+}
+
+/* AERO: a rounded rectangle filled row by row with col(row) (row 0 .. h - 1 of it), the corners over the canvas */
+static void cv_rrect_rows(int32_t x, int32_t y, int32_t w, int32_t h, int32_t r, uint16_t (*col)(int32_t, int32_t, int32_t),
+                          int32_t arg)
+{
+    int32_t i, j;
+    GFX_HOOK_CELL(x, y + cv_oy, x + w, y + h + cv_oy);
+    if (r > w / 2) r = w / 2;
+    if (r > h / 2) r = h / 2;
+    for (j = 0; j < h; j++) {
+        uint16_t c = col(j, h, arg);
+        int32_t e = j < r ? r - 1 - j : j >= h - r ? j - (h - r) : -1;   /* the corner row (0 outermost), -1 none */
+        if (e < 0) {
+            cv_rect(x, y + j, w, 1, c);
+            continue;
+        }
+        e = r - 1 - e;
+        cv_rect(x + r, y + j, w - 2 * r, 1, c);
+        for (i = 0; i < r; i++) {
+            uint32_t a = rr_cov(r, i, e);
+            if (!a) continue;
+            if (a >= 16u) {
+                cv_pset(x + i, y + j, c);
+                cv_pset(x + w - 1 - i, y + j, c);
+            } else {
+                cv_pset(x + i, y + j, ux_mix(cv_get(x + i, y + j), c, (int32_t)(a * 100u / 16u)));
+                cv_pset(x + w - 1 - i, y + j, ux_mix(cv_get(x + w - 1 - i, y + j), c, (int32_t)(a * 100u / 16u)));
+            }
+        }
+    }
+}
+/* glass: arg = the screen row of the rectangle's top, its kind in bits 16..: 0 a card (white 95 % -> 70 % at 48 %, a
+ * pale blue 60 % at 52 % -> white 85 %), 1 a panel (white 80 % -> 55 %), 2 the scope's panel (white 55 % -> 28 %) */
+static uint16_t glass_row(int32_t j, int32_t h, int32_t arg)
+{
+    int32_t sy = (arg & 0xFFFF) + j, k = arg >> 16, t = j * 100 / (h > 1 ? h - 1 : 1);
+    if (k == 0) {
+        if (t < 48) return aero_frost(sy, 95 - t * 25 / 48);
+        if (t < 52) return ux_mix(aero_sky(sy), RGB(0xE1, 0xF4, 0xFF), 62);
+        return aero_frost(sy, 62 + (t - 52) * 23 / 48);
+    }
+    if (k == 1) return aero_frost(sy, 80 - t * 25 / 100);
+    return aero_frost(sy, 55 - t * 27 / 100);
+}
+#define GL_CARD 0
+#define GL_PANEL 1
+#define GL_SCOPE 2
+/* a glass card / panel at canvas (x, y): a 1 px bright rim, the glass inside, radius r */
+static void cv_glass(int32_t x, int32_t y, int32_t w, int32_t h, int32_t r, uint32_t kind)
+{
+    int32_t sy = cv_screen_y(y);
+    cv_rrect(x, y, w, h, r, ux_mix(aero_sky(sy + h / 2), AERO_WHITE, 92), ux.bg);   /* the rim */
+    cv_rrect_rows(x + 1, y + 1, w - 2, h - 2, r - 1, glass_row, (int32_t)(kind << 16) | (sy + 1));
+}
+/* glossy: four colours, the top half c0 -> c1, the bottom half c2 -> c3 (a crisp step at the middle), a bright
+ * first row: the aqua selection bar, the green badge */
+static const uint16_t *gloss_c;
+static uint16_t gloss_row(int32_t j, int32_t h, int32_t arg)
+{
+    int32_t m = h / 2;
+    (void)arg;
+    if (j == 0) return ux_mix(gloss_c[0], AERO_WHITE, 45);
+    return j < m ? ux_mix(gloss_c[0], gloss_c[1], j * 100 / (m > 1 ? m - 1 : 1))
+                 : ux_mix(gloss_c[2], gloss_c[3], (j - m) * 100 / (h - m > 1 ? h - m - 1 : 1));
+}
+static const uint16_t GLOSS_AQUA[4] = {RGB(0x7A, 0xD6, 0xFA), RGB(0x1E, 0x9E, 0xDC), RGB(0x0A, 0x7F, 0xC2), RGB(0x1A, 0x94, 0xD4)};
+static const uint16_t GLOSS_LEAF[4] = {RGB(0x8F, 0xF0, 0x7A), RGB(0x4C, 0xB5, 0x2E), RGB(0x2F, 0x8F, 0x1C), RGB(0x4C, 0xB8, 0x30)};
+static const uint16_t GLOSS_RED[4] = {RGB(0xFF, 0x9A, 0x9A), RGB(0xE0, 0x3A, 0x3A), RGB(0xBE, 0x18, 0x28), RGB(0xD8, 0x30, 0x38)};
+static const uint16_t GLOSS_GLASS[4] = {RGB(0xFF, 0xFF, 0xFF), RGB(0xE8, 0xF6, 0xFF), RGB(0xD2, 0xEC, 0xFA), RGB(0xEC, 0xF8, 0xFF)};
+static void cv_gloss(int32_t x, int32_t y, int32_t w, int32_t h, int32_t r, const uint16_t *c4)
+{
+    gloss_c = c4;
+    cv_rrect_rows(x, y, w, h, r, gloss_row, 0);
+}
+/* AERO: the glossy fill for a flat token's (THEME / SEL: aqua, ACCENT: green, REC: red), 0: none */
+static const uint16_t *gloss_of(uint16_t fill)
+{
+    if (!aero_glass()) return 0;
+    if (fill == ux.theme || fill == ux.sel) return GLOSS_AQUA;
+    if (fill == ux.accent) return GLOSS_LEAF;
+    if (fill == ux.rec) return GLOSS_RED;
+    return 0;
+}
+
+/* AERO: a bubble at canvas (cx, cy), radius r: clear in the middle, a bright spot up left, a bright rim, over what is
+ * there (anti-aliased) */
+static uint32_t gl_isqrt(uint32_t v)
+{
+    uint32_t r = 0, b = 1u << 30;
+    while (b > v) b >>= 2;
+    while (b) {
+        if (v >= r + b) { v -= r + b; r = (r >> 1) + b; } else r >>= 1;
+        b >>= 2;
+    }
+    return r;
+}
+static void cv_bubble(int32_t cx, int32_t cy, int32_t r)
+{
+    int32_t x, y;
+    for (y = cy - r - 1; y <= cy + r + 1; y++)
+        for (x = cx - r - 1; x <= cx + r + 1; x++) {
+            int32_t dx = x - cx, dy = y - cy, d16 = (int32_t)gl_isqrt((uint32_t)(dx * dx + dy * dy) * 256u);
+            int32_t e = r * 16 + 8 - d16, cov = e <= 0 ? 0 : e >= 16 ? 256 : e * 16, sx, sy, t, a;
+            if (!cov) continue;
+            sx = dx + r * 3 / 10; sy = dy + r * 4 / 10;
+            t = (int32_t)gl_isqrt((uint32_t)(sx * sx + sy * sy) * 65536u) / (r * 14 / 10 > 0 ? r * 14 / 10 : 1);
+            a = t < 90 ? 90 - t * 70 / 90 : t < 200 ? 20 : 20 + (t - 200) * 60 / 56;
+            if (a > 90) a = 90;
+            if (t >= 180)                            /* the rim: a touch of aqua under the white */
+                cv_pset(x, y, ux_mix(cv_get(x, y), RGB(0x5A, 0xB8, 0xEA), 30 * cov / 256));
+            cv_pset(x, y, ux_mix(cv_get(x, y), AERO_WHITE, a * cov / 256));
         }
 }
 
@@ -394,9 +577,23 @@ static const uint16_t *ramp(uint16_t fg, uint16_t bg)
 static const uint16_t RV_OVER[1];
 static uint16_t over_fg;
 static const uint8_t *over_cv;
-static uint16_t over_px(uint16_t under_swapped, uint32_t v)
+static uint16_t over_px(uint16_t under_swapped, uint32_t v)   /* (ramp's arithmetic: the same pixels on a flat ground) */
 {
-    return swap16(ux_mix(swap16(under_swapped), over_fg, (int32_t)over_cv[v] * 100 / 255));
+    static const uint8_t SH[3] = {11, 5, 0}, MK[3] = {31, 63, 31};
+    uint32_t bg = swap16(under_swapped), out = 0, k;
+    int32_t w = over_cv[v];
+    for (k = 0; k < 3u; k++) {
+        int32_t x = (int32_t)((bg >> SH[k]) & MK[k]), y = (over_fg >> SH[k]) & MK[k];
+        out |= (uint32_t)(x + (((y - x) * w + 128) >> 8)) << SH[k];
+    }
+    return swap16(out);
+}
+/* AERO: the blend over the canvas for ink fg (the curve as ramp's) */
+static const uint16_t *over_rv(uint16_t fg)
+{
+    over_fg = fg;
+    over_cv = ux.light ? CURVE_LIGHT : CURVE_DARK;
+    return RV_OVER;
 }
 
 /* w x h nibbles, rows back to back, at canvas (x, y) */
@@ -634,7 +831,10 @@ static int32_t cv_text_rv(int32_t x, int32_t y, const aafont_t *f, const char *s
 static int32_t cv_text_flags(int32_t x, int32_t y, const aafont_t *f, const char *s, uint16_t fg, uint16_t bg,
                              uint32_t flags)
 {
-    return cv_text_rv(x, y, f, s, ramp(fg, bg), flags);
+    const uint16_t *rv = ramp(fg, bg);
+    if (aero_glass())                            /* AERO: over the glass */
+        rv = over_rv(fg == bg ? ux.bg : fg);
+    return cv_text_rv(x, y, f, s, rv, flags);
 }
 /* AERO: fg laid over whatever the canvas shows under the text (RV_OVER) */
 static int32_t cv_text_over(int32_t x, int32_t y, const aafont_t *f, const char *s, uint16_t fg, uint32_t flags)
@@ -767,6 +967,22 @@ static int32_t cv_keycap(int32_t x, int32_t y, uint32_t id, uint16_t fill, uint1
 {
     const kc_t *k = &KC[id < KC_COUNT ? id : 0u];
     const uint16_t *rv = kc_ramp(under, fill, ink);
+    if (aero_glass()) {                          /* AERO: the pill over what is there (glossy for a coloured fill) */
+        uint32_t gx, gy, n = 0;
+        const uint16_t *gl = gloss_of(fill);
+        for (gy = 0; gy < KC_H; gy++)
+            for (gx = 0; gx < k->w; gx++, n++) {
+                uint32_t v = (KC_DATA[k->off + (n >> 1)] >> ((n & 1u) ? 0 : 4)) & 15u;
+                int32_t px = x + (int32_t)gx, py = y + (int32_t)gy;
+                uint16_t f = fill;
+                if (!v) continue;
+                if (gl) {
+                    gloss_c = gl;
+                    f = gloss_row((int32_t)gy, KC_H, 0);
+                }
+                cv_pset(px, py, v < 5u ? ux_mix(cv_get(px, py), f, (int32_t)v * 20) : ux_mix(f, gl ? AERO_WHITE : ink, (int32_t)(v - 5u) * 10));
+            }
+    } else
     cv_alpha(x, y, k->w, KC_H, KC_DATA + k->off, rv);
     if (x < 0 || x + k->w > (int32_t)cv_w || y + cv_oy < 0 || y + KC_H + cv_oy > (int32_t)cv_h)
         GFX_HOOK_TEXT(x, y + cv_oy, x + k->w, y + KC_H + cv_oy, k->label, 6u);      /* cut by the canvas */

@@ -142,6 +142,9 @@ static int32_t ref_text(int32_t x, int32_t y, const aafont_t *f, const char *s, 
 
 int main(void)
 {
+    /* AERO: the glass composites each glyph pixel over what is drawn (overlapping kerned glyphs blend over each
+     * other's ink, not over the ground): this reference models the ramps, so it runs with the glass off */
+    aero_glass_off = 1;
     const aafont_t *F[3] = {&AF_S, &AF_M, &AF_L};
     uint32_t n = 0, bad_px = 0, bad_pen = 0;
     for (uint32_t p = 0; p < NPALETTES; p++) {

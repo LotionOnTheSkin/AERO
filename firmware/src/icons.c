@@ -23,6 +23,11 @@ static int32_t cv_trk(int32_t x, int32_t y, uint32_t size, uint32_t k, uint16_t 
     const aag_t *g = &f->g[glyph(f, (uint8_t)s[0])];
     int32_t in = size > 16u ? 2 : 0, w = (int32_t)size - 2 * in;
     int32_t nud = k == 0u ? 1 : 0;   /* the 1's ink centred looks right of centre (its flag): nudged left 1 px (2 looked left) */
+    const uint16_t *gl = gloss_of(fill);
+    if (gl) {                                       /* AERO: a glossy pill (aqua, green), its digit white */
+        cv_gloss(x + in, y + in, w, w, w / 3, gl);
+        under = AERO_WHITE;
+    } else
     cv_rrect(x + in, y + in, w, w, -(w / 4), fill, under);
     GFX_HOOK_ALIGN(x + in - nud, y + in, x + in + w - nud, y + in + w, AL_HV, "track cushion digit");   /* (the 1: measured against its nudge) */
     cv_text_on(x + in + (w - g->bw) / 2 - g->bx - nud, y + in + (w - g->bh) / 2 - g->by, f, s, under, fill);   /* its ink centred */
@@ -75,7 +80,7 @@ static int32_t cv_icon_on(int32_t x, int32_t y, uint32_t size, uint32_t id, uint
     if ((k = icon_cell(&size, id)) < 0)
         return 0;
     cv_alpha_hc(x, y, size, size, size == 24u ? AI24_DATA + AI24_OFF[k] : size == 16u ? AI16_DATA + AI16_OFF[k] :
-                AI12_DATA + AI12_OFF[k], AI_HC, ramp(fg, bg));
+                AI12_DATA + AI12_OFF[k], AI_HC, aero_glass() ? (ramp(fg, bg), over_rv(fg)) : ramp(fg, bg));   /* (AERO: over) */
     GFX_HOOK_ICON(x, y, size, id);
     GFX_HOOK_TEXT(x, y + cv_oy, x + (int32_t)size, y + cv_oy + (int32_t)size, "icon", 4u);
     return (int32_t)size;

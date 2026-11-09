@@ -81,6 +81,8 @@ static void fm1_irq_off(void) {}
 static void fm1_irq_on(void) {}
 #endif
 static uint16_t host_screen[240 * 240];
+/* the ground at screen row y, as the panel stores it: BG, or AERO's glass sky / bars (gfx.c aero_ground) */
+#define GROUND_SW(y) swap16(aero_glass() ? aero_ground((int32_t)(y)) : T_BG)
 /* #181 a blank frame: while host_fl_on, every write of a frame is watched (host_fl_begin .. host_fl_end); a pixel that
  * shows, between two writes, a value that is neither the one before the frame nor the one after (a fill of the
  * background before a canvas lands over it) flashed */
@@ -4970,7 +4972,7 @@ static int test_bughunt_ui2(void)
             bg = (uint16_t)((T_BG >> 8) | (T_BG << 8));
             for (y = Y_GRAPH; y < Y_GRAPH + H_GRAPH; y++)
                 for (x = 0; x < 3u; x++)
-                    out += host_screen[y * 240u + x] != bg;
+                    out += host_screen[y * 240u + x] != (aero_glass() ? GROUND_SW(y) : bg);
         }
         bad += check("piano roll: the C-1 label stays inside the panel (every palette)", !out);
     }
@@ -8576,7 +8578,7 @@ static int head_centres(const char *what, int print)
     while (x < 240) {
         int32_t x0, x1, top = 99, bot = -1, gap = 0, y, ink;
         for (; x < 240; x++) {                        /* the next inked column */
-            for (y = 0, ink = 0; y < H_HEAD; y++) ink |= host_screen[(Y_HEAD + y) * 240 + x] != bg;
+            for (y = 0, ink = 0; y < H_HEAD; y++) ink |= host_screen[(Y_HEAD + y) * 240 + x] != GROUND_SW(Y_HEAD + y);
             if (ink) break;
         }
         if (x >= 240) break;
@@ -8584,7 +8586,7 @@ static int head_centres(const char *what, int print)
         for (; x < 240 && gap < 2; x++) {
             if (x == HEAD_BAT_X && x != x0) break;     /* the battery's cell ends the element */
             for (y = 0, ink = 0; y < H_HEAD; y++)
-                if (host_screen[(Y_HEAD + y) * 240 + x] != bg) {
+                if (host_screen[(Y_HEAD + y) * 240 + x] != GROUND_SW(Y_HEAD + y)) {
                     ink = 1;
                     if (y < top) top = y;
                     if (y > bot) bot = y;
@@ -9047,7 +9049,7 @@ static uint32_t head_ink_cols(int32_t x0, int32_t x1)  /* header columns x0..x1 
     uint32_t n = 0;
     for (int32_t x = x0; x <= x1; x++)
         for (int32_t y = 2; y < 22; y++)
-            if (swap16(host_screen[(uint32_t)y * 240u + (uint32_t)x]) != T_BG) { n++; break; }
+            if (host_screen[(uint32_t)y * 240u + (uint32_t)x] != GROUND_SW(y)) { n++; break; }
     return n;
 }
 static int head_is(const char *s)

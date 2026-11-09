@@ -12,7 +12,9 @@ the AERO work is the look, the menus and the sounds. Everything else is Felucca 
   `firmware/src/eng_neon.c` (MIT): WAVE (SUPER / PWM / SUB), SPRD, BLND, MOVE, CUT, RES, WARM, KTR.
 - **The look:** Frutiger Aero. A clear-sky boot screen (a glossy aqua sun, bubbles, a green hill), the AQUA palette
   (mist, deep aqua, ink, leaf green) as the default (MENU > COLOR still offers NEON's SUNSET and Felucca's palettes),
-  Nunito for values and titles and Open Sans for labels. Glass cards are coming next.
+  Nunito for values and titles and Open Sans for labels. In AQUA (STYLE FLAT) the main pages are glass over a sky:
+  frosted header and footer bars, translucent cards and panel with soft shadows, glossy aqua selection pills and
+  green / red badges, bubbles in HOME's scope.
 - **Status:** experimental, work in progress. It passes Felucca's host test suite; it has not yet been played on a real
   FM-1.
 

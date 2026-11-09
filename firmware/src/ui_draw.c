@@ -370,6 +370,7 @@ static void draw_head(void)
     head_geo(&g, b);
     if (!ui.force && sig == ui.head_sig) {
         if (ui.roll[ROLL_BPM].from[0] && centre) {     /* rolling: the BPM's strip only */
+            cv_at(Y_HEAD);
             cv_begin((uint32_t)(g.sx1 - g.sx0), H_HEAD, T_BG);
             roll_text(ROLL_BPM, g.bx - g.sx0, HEAD_MY, b, ui.bpm_t ? T_ACCENT : T_THEME);
             cv_blit((uint32_t)g.sx0, Y_HEAD);
@@ -377,6 +378,7 @@ static void draw_head(void)
         if (metro_x >= 0 && beat != metro_beat) {      /* a beat: the metronome's cell only (either way round) */
             int32_t cx = g.mx0 - (g.sx0 - g.mx1);
             metro_beat = (int8_t)beat;
+            cv_at(Y_HEAD);
             cv_begin((uint32_t)(g.sx0 - cx), H_HEAD, T_BG);
             head_metro(g.mx0 - cx, beat);
             cv_blit((uint32_t)cx, Y_HEAD);
@@ -385,6 +387,7 @@ static void draw_head(void)
     }
     ui.head_sig = sig;
     metro_x = -1;
+    cv_at(Y_HEAD);                                     /* (AERO: the header's glass bar) */
     cv_begin(240, H_HEAD, T_BG);
     cv_icon_mid(HEAD_TRK_X, H_HEAD / 2, 16, trk_icon(song.sel, 1), midi_lit(song.sel) ? T_TEXT : T_ACCENT, T_BG);   /* (1.5.5:
                                                        * a MIDI IN note into it, #208: lit) */
@@ -432,6 +435,37 @@ static void draw_head(void)
  * below the panel, and between the four columns over rows y .. y + h (the cards; the mixer's strips too) */
 #define RULE_X0 CARD_X(0)
 #define RULE_W (CARD_X(3) + CARD_W - CARD_X(0))
+/* BG across x .. x + w over rows y .. y + h - 1 (AERO: the sky, a soft shadow under the cards and the panel) */
+static uint32_t shadow_rows[2];                         /* the rows the cards' and the panel's bottoms are on (draw_frame) */
+static void bg_fill(uint32_t x, uint32_t y, uint32_t w, uint32_t h)
+{
+    uint32_t r;
+    if (!aero_glass()) {
+        lcd_fill(x, y, w, h, T_BG);
+        return;
+    }
+    for (r = y; r < y + h; r++) {
+        uint16_t sky = aero_ground((int32_t)r);
+        uint32_t k, d = 99u;
+        for (k = 0; k < 2u; k++)
+            if (r >= shadow_rows[k] && r - shadow_rows[k] < d)
+                d = r - shadow_rows[k];
+        if (d < 3u) {                                   /* under the cards (CARD_X spans) or the panel (3 .. 237) */
+            uint16_t sh = ux_mix(sky, RGB(0x0B, 0x3A, 0x5C), d == 0u ? 22 : d == 1u ? 12 : 5);
+            uint32_t a, b, c;
+            lcd_fill(x, r, w, 1, sky);
+            for (c = 0; c < 4u; c++) {
+                a = r < shadow_rows[1] ? (uint32_t)CARD_X(c) + 2u : c == 0u ? 5u : 999u;
+                b = r < shadow_rows[1] ? (uint32_t)(CARD_X(c) + CARD_W) - 2u : 235u;
+                if (a < x) a = x;
+                if (b > x + w) b = x + w;
+                if (a < b) lcd_fill(a, r, b - a, 1, sh);
+            }
+        } else {
+            lcd_fill(x, r, w, 1, sky);
+        }
+    }
+}
 static void lcd_rule(uint32_t x, uint32_t y, uint32_t w, uint32_t h)
 {
     lcd_fill(x, y, w, h, T_RULE);
@@ -443,7 +477,7 @@ static void gap_rows(uint32_t y0, uint32_t y1)
 {
     uint32_t r = (y0 + y1) / 2u;
     if (!ux.style) {
-        lcd_fill(0, y0, 240, y1 - y0, T_BG);
+        bg_fill(0, y0, 240, y1 - y0);
         return;
     }
     lcd_fill(0, y0, 240, r - y0, T_BG);
@@ -456,14 +490,14 @@ static void gap_rows(uint32_t y0, uint32_t y1)
 static void draw_gaps(uint32_t y, uint32_t h)
 {
     uint32_t i;
-    lcd_fill(0, y, (uint32_t)CARD_X(0), h, T_BG);
+    bg_fill(0, y, (uint32_t)CARD_X(0), h);
     for (i = 0; i < 4u; i++) {                          /* right of each column */
         uint32_t x = (uint32_t)(CARD_X(i) + CARD_W), w = i < 3u ? (uint32_t)CARD_X(i + 1u) - x : 240u - x;
         if (ux.style && i < 3u) {
             lcd_rule(x, y, 1, h);
             lcd_fill(x + 1u, y, w - 1u, h, T_BG);
         } else {
-            lcd_fill(x, y, w, h, T_BG);
+            bg_fill(x, y, w, h);
         }
     }
 }
@@ -473,6 +507,8 @@ static void draw_frame(void)
     uint32_t ch = card_h(), gy = graph_y(), gh = graph_h();   /* (MENU > LARGE: tall cards, a strip) */
     if (drive_on())                                    /* NEON: SUNSET DRIVE covers H_HEAD .. Y_FOOT itself */
         return;
+    shadow_rows[0] = Y_LABEL + ch;                     /* (AERO: the shadows under them) */
+    shadow_rows[1] = gy + gh;
     gap_rows(H_HEAD, Y_LABEL);
     gap_rows(Y_LABEL + ch, gy);
     gap_rows(gy + gh, Y_FOOT);
@@ -588,7 +624,11 @@ static void draw_column_tall(uint32_t c, const char *label, const char *val, con
     int32_t ly = LG_LY, vy, lw = 0, mw;
     char k[3] = {'K', (char)('1' + c), 0};
     uint32_t ic = mot ? ICON_X_MOTION : icon, isz = 16u;
+    cv_at(Y_LABEL);
     cv_begin(COL_W, LG_CARD_H, T_BG);
+    if (aero_glass())                                   /* AERO: a glass card */
+        cv_glass(0, 0, COL_W, LG_CARD_H, 6, GL_CARD);
+    else
     cv_rrect(0, 0, COL_W, LG_CARD_H, 4, T_SURF, T_BG);
     {   /* the knob: "K1" .. "K4" on a pill */
         uint16_t fill = hot ? T_ACCENT : label[0] || val[0] ? T_KEY : T_DIM;
@@ -670,7 +710,7 @@ static void draw_column(uint32_t c, const char *label, const char *val, const ch
     int hot = c == ui.hot_col && ui.hot_t, named = fmt_named, mot = card_mot_next && label[0], strip, snap;
     uint32_t kind = large_kind();                       /* MENU > LARGE: tall (draw_column_tall), or the label in M */
     uint8_t sig;
-    uint16_t lc = hot ? T_ACCENT : T_MID;
+    uint16_t lc = hot ? T_ACCENT : aero_glass() ? AERO_LABEL : T_MID;   /* (AERO: the labels aqua) */
     int32_t x, lx = 5, uw, room = COL_W - 8;
     const aafont_t *vf = &AF_M;
     uint32_t n, kn;
@@ -713,8 +753,11 @@ static void draw_column(uint32_t c, const char *label, const char *val, const ch
     if (strip && !ui.roll[c].from[0])
         return;
     if (strip) {                                        /* rolling: the value strip only */
+        cv_at(Y_LABEL + ROLL_Y);
         cv_begin(COL_W, ROLL_H, T_SURF);
         cv_oy = -ROLL_Y;
+        if (aero_glass())                               /* AERO: the glass of the card's rows under the strip */
+            cv_glass(0, 0, COL_W, COL_H, 6, GL_CARD);
     } else {
         char ov[16];                                    /* the value drawn before (in the cache key) */
         const char *k = ui.col[c];
@@ -734,7 +777,11 @@ static void draw_column(uint32_t c, const char *label, const char *val, const ch
             draw_column_tall(c, label, val, unit, vc, ratio, icon, hot, mot, kid, &sp);
             return;
         }
+        cv_at(Y_LABEL);
         cv_begin(COL_W, COL_H, T_BG);
+        if (aero_glass())                               /* AERO: a glass card */
+            cv_glass(0, 0, COL_W, COL_H, 6, GL_CARD);
+        else
         cv_rrect(0, 0, COL_W, COL_H, 4, T_SURF, T_BG);
     }
     if (label[0] || val[0]) {
@@ -893,6 +940,7 @@ static void draw_foot(void)
     if (!ui.force && sig == ui.foot_sig)
         return;
     ui.foot_sig = sig;
+    cv_at(Y_FOOT);                                     /* (AERO: the footer's glass bar) */
     cv_begin(240, H_FOOT, T_BG);
     if (help) {                                       /* row 1: the hint in place of the steps or the OCT+ / OCT- hint */
         help_row(help, 2);
