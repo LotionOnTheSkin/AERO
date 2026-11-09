@@ -47,9 +47,10 @@ int main(int argc, char **argv)
     static const uint8_t pd[] = {0x08, 0xf0};
     const aafont_t probe = {1, 1, 'A', 'A', 0, 0, pg, pd, 0, 0, 0};
     double worst = 100;
-    assert(NPALETTES == 11u && !strcmp(UI_PALETTES[0].name, "GREY") && !strcmp(UI_PALETTES[7].name, "HI-CON") &&
+    assert(NPALETTES == 12u && !strcmp(UI_PALETTES[0].name, "GREY") && !strcmp(UI_PALETTES[7].name, "HI-CON") &&
            !strcmp(UI_PALETTES[8].name, "NIGHT") && !strcmp(UI_PALETTES[9].name, "MONO") && UI_BW_INDEX == 9u &&
-           !strcmp(UI_PALETTES[10].name, "SUNSET") && UI_DEFAULT_INDEX == 10u);   /* (NEON: SUNSET appended, its default) */
+           !strcmp(UI_PALETTES[10].name, "SUNSET") && UI_SUNSET_INDEX == 10u &&   /* (NEON: SUNSET appended) */
+           !strcmp(UI_PALETTES[11].name, "AQUA") && UI_AQUA_INDEX == 11u && UI_DEFAULT_INDEX == 11u);   /* (AERO: AQUA, its default) */
     /* (#50, 1.0.2: appended, the ids stay; GREY is the MONO of 1.0.1, id 0) */
     for (unsigned st = ST_FLAT; st <= ST_LINE; st++) {   /* MONO: every token black or white (but its two colours), in FLAT and LINE */
         uint16_t *tok = &ux.bg;
@@ -93,7 +94,7 @@ int main(int argc, char **argv)
         if (min < worst) worst = min;
         printf("%-7s text %.1f:1, labels %.1f:1, values %.1f:1, selection %.1f:1\n", UI_PALETTES[p].name,
                contrast(T_TEXT, T_BG), contrast(T_MID, T_BG), contrast(T_THEME, T_BG), contrast(T_INK, T_SEL));
-        assert((p == 6u) == ux.light);                         /* PAPER is the light one */
+        assert((p == 6u || p == UI_AQUA_INDEX) == ux.light);   /* PAPER and AQUA (AERO) are the light ones */
         assert(T_REC == UI_PALETTES[p].primary && T_ACCENT == UI_PALETTES[p].secondary && T_WARN == T_REC);
         assert(T_BG == UI_PALETTES[p].c1 && T_THEME == UI_PALETTES[p].c2 && T_TEXT == UI_PALETTES[p].c3);
         /* the blend: transparent, solid and an edge between the two, on two backgrounds */
@@ -147,7 +148,8 @@ int main(int argc, char **argv)
     palette_set(6);
     cv_begin(3, 1, T_BG); cv_text(0, 0, &probe, "A", T_THEME);
     assert(swap16(cv_px[1]) != green);
-    /* fonts (NEON: Chakra Petch S 12 px, M 15 px, L 27 px; Felucca's Inter Tight: h 15 / 19 / 35, asc 12 / 15 / 28);
+    /* fonts (AERO: Open Sans S 12 px, Nunito M 15 px and L 27 px, set in NEON's line boxes (Chakra Petch's: h 16 / 20 /
+     * 36, asc 12 / 15 / 27); Felucca's Inter Tight: h 15 / 19 / 35, asc 12 / 15 / 28);
      * tabular digits; the ellipsis; L has capitals only */
     assert(AF_S.h == 16 && AF_S.asc == 12 && AF_M.h == 20 && AF_M.asc == 15 && AF_L.h == 36 && AF_L.asc == 27);
     assert(text_w(&AF_M, "0000") == text_w(&AF_M, "1111") && text_w(&AF_S, "1.25") == text_w(&AF_S, "8.75"));

@@ -22,15 +22,24 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 def open_font(spec, px):
-    """spec = "path[#index][@wght]" (a .ttc takes the face index, a variable font the weight); '~' is expanded."""
+    """spec = "path[#index][@wght]" (a .ttc takes the face index, a variable font the weight); '~' is expanded.
+    (AERO) "@600,wdth=90": a font with more axes (Open Sans: weight and width) gets the weight on its Weight axis,
+    the width on its Width axis, and every other axis at its default."""
     spec, _, wght = spec.partition("@")
     path, _, idx = spec.partition("#")
     path = os.path.expanduser(path)
     if not os.path.exists(path):
         raise SystemExit(f"font not found: {path}")
     f = ImageFont.truetype(path, px, index=int(idx) if idx else 0, layout_engine=ImageFont.Layout.RAQM)
-    if wght:
-        f.set_variation_by_axes([float(wght)])
+    if wght:                                   # "600" (the weight) or "600,wdth=90" (and the width: Open Sans)
+        want = {"Weight": None, "Width": None}
+        for part in wght.split(","):
+            k, _, v = part.rpartition("=")
+            want[{"": "Weight", "wght": "Weight", "wdth": "Width"}[k]] = float(v)
+        axes = f.get_variation_axes()
+        name = lambda ax: ax["name"].decode() if isinstance(ax["name"], bytes) else ax["name"]   # noqa: E731
+        f.set_variation_by_axes([want.get(name(ax)) if want.get(name(ax)) is not None else ax["default"]
+                                 for ax in axes])
     return f
 
 
@@ -98,7 +107,7 @@ FIXED = "0123456789."       # one phase, at the rounded pen: src/ui_draw.c roll_
 WHOLE = "0123456789."       # with tabular, their advance in whole pixels too: a number keeps an even pitch
 
 
-def raster_font(spec, px, chars, tracking=0.0, gamma=1.0, tabular=True, kern_min=1, phases=1):
+def raster_font(spec, px, chars, tracking=0.0, gamma=1.0, tabular=True, kern_min=1, phases=1, line=None, tails=None):
     """-> dict(h, asc, phases, glyphs{ch: (adv16, [(bx, by, bw, bh, bytes) per phase, or one])}, kern{(a,b): d16})
 
     Advances, kerning and the outlines come from the instanced weight at 16 x the size (unhinted): advances in
@@ -110,12 +119,18 @@ def raster_font(spec, px, chars, tracking=0.0, gamma=1.0, tabular=True, kern_min
     string does; with tabular, the WHOLE ones also advance by whole pixels, so a number has no rounding at all.
     tracking: extra advance per glyph in em (negative = tighter; the stand-in for "Inter Tight").
     tabular: digits share one advance (the widest, OpenType tnum), each centred in it, so values do not jiggle.
+    line: (asc, h) to set the line box instead of the font's own ascent / descent (AERO: Open Sans and Nunito set in
+    the line boxes the layout was made for; the baseline at asc, the ink where the font puts it)
+    tails: {char: rows} the most ink a capital's tail may have below the baseline (AERO: Nunito's long Q and Open
+    Sans's J and Q cut to Chakra Petch's, so they stay inside the rows and cells the layout gives a line)
     kern_min: keep kerning pairs of at least this many 1/16 px.
     """
     assert phases in (1, 2, 4, 8)
     font = open_font(spec, px)                 # the line metrics only (ascent / descent rounded to pixels)
     font_hi = open_font(spec, px * SS)
     asc, desc = font.getmetrics()
+    if line:
+        asc, desc = line[0], line[1] - line[0]
     pad = px                                   # canvas margin around the glyph (overhang, accents)
     cw, chh = px * 3, asc + desc + 2 * pad
     base = pad + asc                           # baseline row of the canvas
@@ -141,6 +156,8 @@ def raster_font(spec, px, chars, tracking=0.0, gamma=1.0, tabular=True, kern_min
         ph = []
         for p in range(1 if ch in FIXED else phases):
             nib = None if ch == " " else _phase(font_hi, ch, cw, chh, (pad + shift + p / phases) * SS, base, f, gamma)
+            if nib and tails and ch in tails:          # the tail cut at base + rows
+                nib.paste(0, (0, base + tails[ch], nib.width, nib.height))
             bb = nib and nib.getbbox()
             if not bb:
                 ph.append((0, 0, 0, 0, b""))
@@ -149,7 +166,7 @@ def raster_font(spec, px, chars, tracking=0.0, gamma=1.0, tabular=True, kern_min
             ph.append((x0 - pad, y0 - pad, x1 - x0, y1 - y0, pack(list(nib.crop(bb).tobytes()))))
             bot_max = max(bot_max, y1 - pad)
         glyphs[ch] = (a16, ph)
-    h = max(asc + desc, bot_max)
+    h = asc + desc if line else max(asc + desc, bot_max)
     kern = {}
     lens = {c: font_hi.getlength(c, features=feats) for c in chars if c != " "}
     for a in chars:

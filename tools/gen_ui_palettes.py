@@ -58,8 +58,13 @@ PALETTES = [
     # NEON: Sunset Drive, its default (src/panel.c): deep indigo, magenta values and selections, lavender-white
     # text, cyan for the one active thing
     ("SUNSET", (18, 10, 42),    (255, 92, 178),  (244, 233, 255), RED,       (45, 226, 230)),
+    # AERO: Frutiger Aero, its default (src/panel.c): a light palette. Mist ground, deep ink text, aqua values and
+    # selections, leaf green for the one active thing. The design's Aqua (10, 143, 216), Ink (11, 58, 92) and Leaf
+    # (92, 191, 58) deepened until every pairing passes (Mist on an aqua selection 4.5:1); the glossy look's bright
+    # sky, glass and badges are drawn over them (src/ui_draw.c aero_*)
+    ("AQUA",   (236, 249, 255), (0, 84, 144),    (6, 44, 72),     RED_LIGHT, (30, 118, 20)),
 ]
-DEFAULT = "SUNSET"                 # a fresh FM-1's palette (src/panel.c)
+DEFAULT = "AQUA"                   # a fresh FM-1's palette (src/panel.c)
 BW = "MONO"
 BW_GREY = (82, 82, 82)             # MONO's one mid grey (RGB565 10/20/10): DIM LINE RAISE LANE
 # the 20 palettes of the earlier firmware (index order) -> the new palette
@@ -201,6 +206,8 @@ def main():
         out += ["};", f"#define UI_NPALETTES {len(PALETTES)}u", "#define UI_GREY_INDEX 0u",
                 f"#define UI_BW_INDEX {names.index(BW)}u          /* MONO: black and white (src/gfx.c palette_set) */",
                 f"#define UI_DEFAULT_INDEX {names.index(DEFAULT)}u          /* {DEFAULT}: a fresh FM-1's palette (src/panel.c) */",
+                f"#define UI_SUNSET_INDEX {names.index('SUNSET')}u          /* NEON's Sunset Drive: the gold sun (ui_graph.c DRIVE) */",
+                f"#define UI_AQUA_INDEX {names.index('AQUA')}u          /* AERO's Frutiger Aero: the sky's own colours (ui_draw.c) */",
                 f"#define UI_BW_GREY 0x{to565(BW_GREY):04x}u          /* MONO's one grey: DIM LINE RAISE LANE */",
                 f"#define UI_PAL_TAG {PAL_TAG}u          /* stored id = UI_PAL_TAG + index; below 20: an old id */"]
         out += [f"#define UI_{k}_PCT {v}" for k, v in PCT.items()] + [f"#define UI_RAISE_PCT {RAISE_PCT}   /* SURF -> TEXT */"]

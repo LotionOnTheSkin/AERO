@@ -10,9 +10,11 @@ the AERO work is the look, the menus and the sounds. Everything else is Felucca 
 - **Try it in the browser:** open the [FM-1 emulator](https://joakimeriksson.github.io/fm1-emu), load `aero.fwsc`, press Start.
 - **The engine (from NEON):** NEON is the last engine. On the PRESETS page, turn the ENG knob to NEON.
   `firmware/src/eng_neon.c` (MIT): WAVE (SUPER / PWM / SUB), SPRD, BLND, MOVE, CUT, RES, WARM, KTR.
+- **The look:** Frutiger Aero. A clear-sky boot screen (a glossy aqua sun, bubbles, a green hill), the AQUA palette
+  (mist, deep aqua, ink, leaf green) as the default (MENU > COLOR still offers NEON's SUNSET and Felucca's palettes),
+  Nunito for values and titles and Open Sans for labels. Glass cards are coming next.
 - **Status:** experimental, work in progress. It passes Felucca's host test suite; it has not yet been played on a real
-  FM-1. For now the look is still NEON's Sunset Drive; the AQUA palette, Nunito / Open Sans type, the AERO boot screen
-  and glass cards are coming next.
+  FM-1.
 
 Engine numbers: NEON is engine 15; 14 stays reserved for Felucca's ADPCM, so projects move between this firmware,
 NEON and upstream Felucca without a mismatch. A project or user preset with a NEON sound does not load on upstream Felucca.

@@ -1368,83 +1368,222 @@ static void draw_columns(void)
 }
 
 
-/* The power-on splash (main.c fm1_main, web/emu felucca_web.c; NEON: Sunset Drive). A synthwave sunrise in the
- * saved palette (settings_init before it): the sky a THEME tint deepening down to the horizon, a striped sun from
- * gold (SUNSET; any other palette its TEXT) into THEME, an ACCENT horizon and a THEME perspective grid on the ground;
- * NEON in AF_L over an ACCENT shadow, the subtitle in AF_S, and the release line at the bottom. GREY and MONO draw it
- * flat (no blends: they stay gray / black and white): the sun TEXT, the grid THEME, the horizon and shadow TEXT / MID.
- * Drawn on the canvas in two halves (240 x 120 each, CV_MAX), every text inside the half it is in; no image stored */
-#define NEON_VERSION "0.1"                          /* NEON's own release (the Felucca it is built on: FELUCCA_VERSION) */
-static const char *const SPLASH_LINES[] = {"NEON", "SYNTHWAVE GROOVEBOX", "NEON " NEON_VERSION " \xB7 on Felucca " FELUCCA_VERSION};
+/* The power-on splash (main.c fm1_main, web/emu felucca_web.c; AERO: clear sky). A Frutiger Aero morning in the
+ * saved palette (settings_init before it): a sky deepening upward with a glare at the top right, a glossy aqua sun with
+ * its highlight and reflection, bubbles, a green hill with a bright rim; AERO in AF_L, white over an aqua drop edge,
+ * "clear-sky groovebox" in AF_S under it, the release line on the hill. AQUA (AERO's default) takes the design's own
+ * colours; another palette its tokens (the sky THEME -> BG, the sun THEME, the hill ACCENT); GREY and MONO draw it flat
+ * (no blends: gray / black and white stay so): BG, the sun TEXT, the bubbles' rims MID, the hill THEME.
+ * Drawn on the canvas in two halves (240 x 120 each, CV_MAX), every text inside the half it is in, the texts laid over
+ * the picture (cv_text_over); computed per pixel (once, at power-on), no image stored */
+#define AERO_VERSION "0.1"                          /* AERO's own release (the Felucca it is built on: FELUCCA_VERSION) */
+static const char *const SPLASH_LINES[] = {"AERO", "clear-sky groovebox", "AERO " AERO_VERSION " \xB7 on Felucca " FELUCCA_VERSION};
 #define SPL_HALF 120                                /* a pass: 240 x 120 */
-#define SPL_SKY0 64                                 /* the sky's gradient: from here (BG above) */
-#define SPL_HZ 150                                  /* the horizon (2 px) */
-#define SPL_GND1 214                                /* the ground's grid: to here (BG below: the release line) */
-#define SPL_SUN_Y 122                               /* the sun: its centre and radius (cut by the horizon) */
-#define SPL_SUN_R 52
-#define SPL_GOLD 0xFE8Cu                            /* (255, 209, 102): SUNSET's sun top */
-static int32_t spl_isqrt(int32_t v)
+#define RGB565(r, g, b) ((uint16_t)((((r) >> 3) << 11) | (((g) >> 2) << 5) | ((b) >> 3)))
+#define SPL_SUN_X 120                               /* the sun: centre and radius */
+#define SPL_SUN_Y 72
+#define SPL_SUN_R 32
+#define SPL_TITLE_INK 122                           /* AERO's capitals from this row (the bottom half) */
+#define SPL_SUB_Y 148                               /* the subtitle's line */
+#define SPL_VER_Y 219                               /* the release line's line, on the hill */
+static const struct { int16_t x, y, r; } SPL_BUB[] = {{39, 59, 13}, {59, 120, 7}, {200, 128, 10}, {215, 52, 6}, {176, 92, 4}};
+static struct {
+    uint16_t sky0, sky1, sky2, orb0, orb1, orb2, hill0, hill1, hill2, glass, tint, title, edge, sub, ver, verbg;
+    uint8_t plain, aqua;
+} spl;
+static uint32_t spl_isqrt(uint32_t v)               /* floor(sqrt(v)), bit by bit */
 {
-    int32_t r = 0;
-    while ((r + 1) * (r + 1) <= v)
-        r++;
+    uint32_t r = 0, b = 1u << 30;
+    while (b > v)
+        b >>= 2;
+    while (b) {
+        if (v >= r + b) {
+            v -= r + b;
+            r = (r >> 1) + b;
+        } else {
+            r >>= 1;
+        }
+        b >>= 2;
+    }
     return r;
 }
-/* the sun's stripes: the rows the sky shows through (three bands, wider down to the horizon) */
-static int spl_stripe(int32_t y)
+/* three stops: c0 at 0, c1 at mid (0..256), c2 at 256; t 0..256 */
+static uint16_t spl_grad3(uint16_t c0, uint16_t c1, uint16_t c2, int32_t mid, int32_t t)
 {
-    return (y >= 127 && y < 129) || (y >= 135 && y < 138) || (y >= 143 && y < 147);
+    if (t < 0) t = 0;
+    if (t > 256) t = 256;
+    return t < mid ? ux_mix(c0, c1, t * 100 / mid) : ux_mix(c1, c2, (t - mid) * 100 / (256 - mid));
 }
-static void splash_pass(int32_t y0)
+/* a cubic Bezier coordinate at t (0..256) */
+static int32_t spl_bez(int32_t p0, int32_t p1, int32_t p2, int32_t p3, int32_t t)
 {
-    int plain = ux.pal_i == UI_GREY_INDEX || ux.pal_i == UI_BW_INDEX;   /* GREY, MONO: flat */
-    uint16_t sky = plain ? T_BG : ux_mix(T_BG, T_THEME, 30);
-    uint16_t sun0 = plain ? T_TEXT : ux.pal_i == UI_DEFAULT_INDEX ? (uint16_t)SPL_GOLD : T_TEXT;
-    uint16_t grid = plain ? T_THEME : ux_mix(T_BG, T_THEME, 72);
-    uint16_t hue = plain ? T_TEXT : T_ACCENT;
-    int32_t y, j, top = SPL_SUN_Y - SPL_SUN_R;
-    cv_begin(240, SPL_HALF, T_BG);
-    cv_oy = -y0;
-    for (y = y0; y < y0 + SPL_HALF; y++) {
-        int32_t dy = y - SPL_SUN_Y;
-        if (y >= SPL_SKY0 && y < SPL_HZ && !plain)
-            cv_rect(0, y, 240, 1, ux_mix(T_BG, sky, (y - SPL_SKY0) * 100 / (SPL_HZ - SPL_SKY0)));
-        if (y < SPL_HZ && dy * dy < SPL_SUN_R * SPL_SUN_R && !spl_stripe(y)) {
-            int32_t hw = spl_isqrt(SPL_SUN_R * SPL_SUN_R - dy * dy);
-            cv_rect(120 - hw, y, 2 * hw, 1, plain ? sun0 : ux_mix(sun0, T_THEME, (y - top) * 100 / (SPL_HZ - top)));
-        }
-        if (y == SPL_HZ || y == SPL_HZ + 1)
-            cv_rect(0, y, 240, 1, hue);
-        if (y > SPL_HZ + 1 && y < SPL_GND1) {
-            int32_t t = y - (SPL_HZ + 2), n = SPL_GND1 - (SPL_HZ + 2);
-            for (j = 0; j < 7; j++) {               /* the cross lines, closer together towards the horizon */
-                int32_t ly = (SPL_HZ + 2) + (n * j * j) / 36;
-                if (y == ly)
-                    cv_rect(0, y, 240, 1, grid);
-            }
-            for (j = -10; j <= 10; j++) {           /* the lines to the vanishing point */
-                int32_t x = 120 + j * 4 + (j * 31 * t) / n;
-                cv_rect(x, y, 1 + (t > n / 2), 1, grid);
-            }
+    int64_t u = 256 - t, v = t;
+    return (int32_t)((u * u * u * p0 + 3 * u * u * v * p1 + 3 * u * v * v * p2 + v * v * v * p3) >> 24);
+}
+/* the hill's top edge at column x, in 1/16 px: a cubic from (0, 190) by (60, 165) and (130, 167) to (240, 186) */
+static int32_t spl_hill16(int32_t x)
+{
+    int32_t t, best = 0, bd = 1 << 30;
+    for (t = 0; t <= 256; t++) {                    /* the t whose x is nearest (x rises with t) */
+        int32_t d = spl_bez(0, 60 * 16, 130 * 16, 240 * 16, t) - x * 16 - 8;
+        if (d < 0) d = -d;
+        if (d < bd) {
+            bd = d;
+            best = t;
         }
     }
-    if (y0 == 0) {                                  /* the top half: the name and the subtitle */
-        int32_t w = text_w(&AF_L, SPLASH_LINES[0]), x = (240 - w) / 2;
-        cv_text_flags(x, 14 + 2, &AF_L, SPLASH_LINES[0], plain ? T_MID : hue, T_BG, CVT_SHADOW);
-        cv_text(x, 14, &AF_L, SPLASH_LINES[0], T_TEXT);
+    return spl_bez(190 * 16, 165 * 16, 167 * 16, 186 * 16, best);
+}
+/* coverage 0..256 of a disc of radius r (1/16 px) at distance d (1/16 px): a 1 px soft edge */
+static int32_t spl_cov(int32_t d16, int32_t r16)
+{
+    int32_t e = r16 + 8 - d16;
+    return e <= 0 ? 0 : e >= 16 ? 256 : e * 16;
+}
+static uint16_t spl_px(int32_t x, int32_t y, const int32_t *hill)
+{
+    uint16_t c;
+    uint32_t k;
+    int32_t dx, dy, d16, cov, h = hill[x];
+    if (spl.plain) {                                /* GREY, MONO: flat */
+        c = T_BG;
+        if ((y << 4) >= h)
+            c = T_THEME;
+        dx = x - SPL_SUN_X; dy = y - SPL_SUN_Y;
+        if (dx * dx + dy * dy <= SPL_SUN_R * SPL_SUN_R)
+            c = T_TEXT;
+        for (k = 0; k < sizeof SPL_BUB / sizeof SPL_BUB[0]; k++) {
+            int32_t bx = x - SPL_BUB[k].x, by = y - SPL_BUB[k].y, r = SPL_BUB[k].r, dd = bx * bx + by * by;
+            if (dd <= r * r && dd > (r - 2) * (r - 2))
+                c = T_MID;
+        }
+        return c;
+    }
+    /* the sky: three stops, the deepest at the top */
+    c = spl_grad3(spl.sky0, spl.sky1, spl.sky2, 141, y * 256 / 239);
+    /* the glare: a soft white bloom at the top right */
+    dx = x - 187; dy = y - 38;
+    d16 = (int32_t)spl_isqrt((uint32_t)(dx * dx + dy * dy) * 256u);
+    if (d16 < 108 * 16) {
+        int32_t t = d16 * 256 / (108 * 16), a = t < 64 ? 95 - t * 60 / 64 : 35 - (t - 64) * 35 / 192;
+        c = ux_mix(c, spl.glass, spl.aqua ? a : a / 2);
+    }
+    /* the hill: a gradient under its edge, a bright rim on it (anti-aliased) */
+    if ((y << 4) + 16 > h) {
+        int32_t t = ((y << 4) - 2672) * 256 / (3840 - 2672);   /* (rows 167 .. 240) */
+        uint16_t g = spl_grad3(spl.hill0, spl.hill1, spl.hill2, 128, t);
+        int32_t a = (y << 4) + 16 - h;                         /* 0..16: how much of this row lies under the edge */
+        c = ux_mix(c, g, a >= 16 ? 100 : a * 100 / 16);
+    }
+    {
+        int32_t e = (y << 4) + 8 - h;                          /* the rim: 1.5 px on the edge */
+        if (e < 0) e = -e;
+        if (e < 20)
+            c = ux_mix(c, spl.glass, (20 - e) * 70 / 20);
+    }
+    /* the sun: a radial gradient from its upper part, cut anti-aliased */
+    dx = x - SPL_SUN_X; dy = y - SPL_SUN_Y;
+    d16 = (int32_t)spl_isqrt((uint32_t)(dx * dx + dy * dy) * 256u);
+    cov = spl_cov(d16, SPL_SUN_R * 16);
+    if (cov) {
+        int32_t gx = x - SPL_SUN_X, gy = y - (SPL_SUN_Y - 10);
+        int32_t g16 = (int32_t)spl_isqrt((uint32_t)(gx * gx + gy * gy) * 256u);
+        uint16_t o = spl_grad3(spl.orb0, spl.orb1, spl.orb2, 154, g16 * 256 / (42 * 16));
+        int32_t ex, ey;
+        c = ux_mix(c, o, cov * 100 / 256);
+        /* its highlight: an ellipse 44 x 24 at (120, 58), white fading down */
+        ex = (x - SPL_SUN_X) * 256 / 22; ey = (y - 58) * 256 / 12;
+        if (ex * ex + ey * ey < 65536) {
+            int32_t a = 90 - (y - 46) * 85 / 24;
+            c = ux_mix(c, spl.glass, a < 5 ? 5 : a);
+        }
+        /* its reflection: a white arc low in the sun, from (107, 85) up to (120, 72) and down to (133, 85) */
+        {
+            int32_t t, best = 1 << 30;
+            for (t = 0; t <= 32; t++) {
+                int32_t u = 32 - t, px = (u * u * 107 + 2 * t * u * 120 + t * t * 133) / 1024;
+                int32_t py = (u * u * 85 + 2 * t * u * 60 + t * t * 85) / 1024;
+                int32_t d = (x - px) * (x - px) + (y - py) * (y - py);
+                if (d < best) best = d;
+            }
+            d16 = (int32_t)spl_isqrt((uint32_t)best * 256u);
+            if (d16 < 36)
+                c = ux_mix(c, spl.glass, d16 <= 20 ? 100 : (36 - d16) * 100 / 16);
+        }
+    }
+    /* the bubbles: clear in the middle, a bright spot up left, a bright rim */
+    for (k = 0; k < sizeof SPL_BUB / sizeof SPL_BUB[0]; k++) {
+        int32_t r = SPL_BUB[k].r, bx = x - SPL_BUB[k].x, by = y - SPL_BUB[k].y, sx, sy, t, a;
+        d16 = (int32_t)spl_isqrt((uint32_t)(bx * bx + by * by) * 256u);
+        cov = spl_cov(d16, r * 16);
+        if (!cov)
+            continue;
+        sx = bx + r * 3 / 10; sy = by + r * 4 / 10;              /* from the spot at (0.35, 0.3) of the box */
+        t = (int32_t)spl_isqrt((uint32_t)(sx * sx + sy * sy) * 65536u) / (r * 14 / 10);   /* 0..~256 */
+        a = t < 90 ? 95 - t * 70 / 90 : t < 218 ? 25 - (t - 90) * 10 / 128 : 15 + (t - 218) * 60 / 38;
+        if (a > 95) a = 95;
+        if (t >= 160 && t < 218)
+            c = ux_mix(c, spl.tint, 15 * cov / 256);
+        c = ux_mix(c, spl.glass, a * cov / 256);
+    }
+    return c;
+}
+static void splash_colours(void)
+{
+    spl.plain = ux.pal_i == UI_GREY_INDEX || ux.pal_i == UI_BW_INDEX;
+    spl.aqua = ux.pal_i == UI_AQUA_INDEX;
+    if (spl.aqua) {                                 /* the design's own (tools/gen_ui_palettes.py AQUA) */
+        spl.sky0 = RGB565(0x3A, 0xA0, 0xE8); spl.sky1 = RGB565(0x9F, 0xDC, 0xFF); spl.sky2 = RGB565(0xE6, 0xF7, 0xFF);
+        spl.orb0 = RGB565(0x9E, 0xF0, 0xFF); spl.orb1 = RGB565(0x1F, 0xB3, 0xE8); spl.orb2 = RGB565(0x0A, 0x6F, 0xB0);
+        spl.hill0 = RGB565(0xA6, 0xE0, 0x5A); spl.hill1 = RGB565(0x5C, 0xBF, 0x3A); spl.hill2 = RGB565(0x2F, 0x8F, 0x22);
+        spl.glass = 0xFFFFu; spl.tint = RGB565(0xBF, 0xE9, 0xFF);
+        spl.title = 0xFFFFu; spl.edge = RGB565(0x0A, 0x7F, 0xC2); spl.sub = T_TEXT;
+        spl.ver = 0xFFFFu; spl.verbg = RGB565(0x1E, 0x5C, 0x16);
+    } else {                                        /* the palette's own: the sky THEME over BG, the sun THEME, the hill ACCENT */
+        uint16_t lite = ux.light ? T_BG : T_TEXT;
+        spl.sky0 = ux_mix(T_BG, T_THEME, 75); spl.sky1 = ux_mix(T_BG, T_THEME, 35); spl.sky2 = T_BG;
+        spl.orb0 = ux_mix(T_THEME, lite, 60); spl.orb1 = T_THEME; spl.orb2 = ux_mix(T_THEME, T_BG, 40);
+        spl.hill0 = ux_mix(T_ACCENT, lite, 30); spl.hill1 = T_ACCENT; spl.hill2 = ux_mix(T_ACCENT, T_BG, 35);
+        spl.glass = lite; spl.tint = ux_mix(lite, T_THEME, 30);
+        spl.title = T_TEXT; spl.edge = T_THEME; spl.sub = T_TEXT; spl.ver = T_INK; spl.verbg = T_ACCENT;
+    }
+    if (spl.plain) {
+        spl.title = T_TEXT; spl.edge = T_MID; spl.sub = T_MID; spl.ver = T_BG;   /* (the release line BG on the THEME hill) */
+    }
+}
+static void splash_pass(int32_t y0, const int32_t *hill)
+{
+    int32_t x, y;
+    cv_begin(240, SPL_HALF, T_BG);
+    cv_oy = -y0;
+    for (y = y0; y < y0 + SPL_HALF; y++)
+        for (x = 0; x < 240; x++)
+            cv_pset(x, y, spl_px(x, y, hill));
+    if (y0 == 0) {
+        ;                                           /* (the top half: the sky, the sun, the bubbles; no text) */
+    } else {                                        /* the bottom half: the name, the subtitle, the release line */
+        int32_t w = text_w(&AF_L, SPLASH_LINES[0]), x0 = (240 - w) / 2, ly = SPL_TITLE_INK - AF_L_CAP_Y;
+        cv_text_over(x0, ly + 2, &AF_L, SPLASH_LINES[0], spl.edge, CVT_SHADOW);
+        cv_text_over(x0, ly, &AF_L, SPLASH_LINES[0], spl.title, 0);
         w = text_w(&AF_S, SPLASH_LINES[1]);
-        cv_text((240 - w) / 2, 52, &AF_S, SPLASH_LINES[1], plain ? T_MID : hue);
-    } else {                                        /* the bottom half: the release line */
-        int32_t w = text_w(&AF_S, SPLASH_LINES[2]);
-        cv_text((240 - w) / 2, 220, &AF_S, SPLASH_LINES[2], T_MID);
+        cv_text_over((240 - w) / 2, SPL_SUB_Y, &AF_S, SPLASH_LINES[1], spl.sub, 0);
+        w = text_w(&AF_S, SPLASH_LINES[2]);
+        if (!spl.plain)
+            cv_text_over((240 - w) / 2, SPL_VER_Y + 1, &AF_S, SPLASH_LINES[2], spl.verbg, CVT_SHADOW);
+        cv_text_over((240 - w) / 2, SPL_VER_Y, &AF_S, SPLASH_LINES[2], spl.ver, 0);
     }
     cv_blit(0, (uint32_t)y0);
     cv_oy = 0;
 }
 static void draw_splash(void)
 {
-    splash_pass(0);
-    splash_pass(SPL_HALF);
+    static int32_t hill[240];                       /* the hill's edge per column, 1/16 px */
+    int32_t x;
+    for (x = 0; x < 240; x++)
+        hill[x] = spl_hill16(x);
+    splash_colours();
+    splash_pass(0, hill);
+    splash_pass(SPL_HALF, hill);
     lcd_sync();
 }
 

@@ -11,6 +11,8 @@ thanks the work below; each keeps its own licence (see [LICENSE](LICENSE), [LICE
   Pack (the drum samples, CC0 1.0); the [Fukiai](https://github.com/hugelton/Fukiai) icon
   font ([MIT](LICENSES/MIT-Fukiai.txt)); the ANALOG, LOFI, TRIO, WHEEL, NOISE and PHASE engines
   ([Felucca-Engines](https://github.com/hugelton/Felucca-Engines), [MIT](LICENSES/MIT-Felucca-Engines.txt))
+- AERO's fonts: [Open Sans](https://github.com/googlefonts/opensans) by The Open Sans Project Authors, [SIL OFL 1.1](LICENSES/OFL-OpenSans.txt), and
+  [Nunito](https://github.com/googlefonts/nunito) by The Nunito Project Authors, [SIL OFL 1.1](LICENSES/OFL-Nunito.txt)
 - NEON's font: [Chakra Petch](https://github.com/m4rc1e/Chakra-Petch) by The Chakra Petch Project Authors, [SIL OFL 1.1](LICENSES/OFL-ChakraPetch.txt)
 - Font: [Inter Tight](https://github.com/rsms/inter-tight) by The Inter Project Authors, [SIL OFL 1.1](LICENSES/OFL-InterTight.txt)
 - Samples: [Versilian Studios](https://versilian-studios.com/) [VSCO-2 Community Edition](https://github.com/sgossner/VSCO-2-CE) and [VCSL](https://github.com/sgossner/VCSL), CC0 1.0: the SAMPLE sets, also SLICE's PIANO and PIANO HD ([attribution](assets/samples-cc0/ATTRIBUTION.txt))

@@ -2258,7 +2258,7 @@ static void drive_pass(int32_t y0, uint32_t ph, uint32_t loud, uint32_t bass)
 {
     int plain = drv_plain();
     uint16_t sky = plain ? T_BG : ux_mix(T_BG, T_THEME, 30);
-    uint16_t sun0 = ux.pal_i == UI_DEFAULT_INDEX ? (uint16_t)DRV_GOLD : T_TEXT;
+    uint16_t sun0 = ux.pal_i == UI_SUNSET_INDEX ? (uint16_t)DRV_GOLD : T_TEXT;   /* (AERO: SUNSET's, not the default's) */
     uint16_t grid = plain ? T_THEME : ux_mix(T_BG, T_THEME, 72);
     uint16_t hz = plain ? T_TEXT : ux_mix(T_BG, T_ACCENT, 50 + (int32_t)bass * 50 / 255);
     int32_t r = DRV_SUN_R + (int32_t)loud * 5 / 255, top = DRV_SUN_Y - r, gh = DRV_H - (DRV_HZ + 2), y, j;

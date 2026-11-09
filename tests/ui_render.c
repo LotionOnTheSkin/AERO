@@ -167,7 +167,7 @@ static uint8_t pen_h;                           /* GFX_HOOK_PEN: the line height
 #define GFX_HOOK_PEN(y, f) (pen_h = (f)->h, al_n ? (al_cy0 = (y) + cv_oy + (f)->g[glyph((f), 'H')].by, al_cy1 = al_cy0 + (f)->g[glyph((f), 'H')].bh) : 0)
 #define GFX_HOOK_ITEM(x0, y0, x1, y1) al_item(x0, (y0) + cv_oy, x1, (y1) + cv_oy, 1, "cushion")
 #define GFX_HOOK_ICON(x, y, size, id) hk_icon(x, (y) + cv_oy, size, id)
-static char splash_seen[96];                    /* the splash scene: its texts as drawn, '|' between (draw) */
+static char splash_seen[128];                    /* the splash scene: its texts as drawn, '|' between (draw) */
 static uint8_t in_splash;
 static void hk_text(int32_t x0, int32_t y0, int32_t x1, int32_t y1, const char *s, uint32_t flags)
 {
@@ -1680,34 +1680,39 @@ static void draw(int s)
         setup_show("TURN RIGHT", "ALGORITHM");
         return;
     }
-    if (s == S_SPLASH) {                          /* the power-on splash (main.c, before the UI; NEON: Sunset Drive): its
-                                                   * lines (the name twice: its shadow, then itself), the release shown
-                                                   * FELUCCA_VERSION (run_tests.sh: src/felucca.c's) */
-        static const char WANT[] = "NEON|NEON|SYNTHWAVE GROOVEBOX|NEON " NEON_VERSION " \xB7 on Felucca " FELUCCA_VERSION;
+    if (s == S_SPLASH) {                          /* the power-on splash (main.c, before the UI; AERO: clear sky): its
+                                                   * lines (the name twice: its drop edge, then itself), the release
+                                                   * shown FELUCCA_VERSION (run_tests.sh: src/felucca.c's) */
+        static const char WANT[] = "AERO|AERO|clear-sky groovebox|AERO " AERO_VERSION " \xB7 on Felucca " FELUCCA_VERSION "|AERO "
+                                   AERO_VERSION " \xB7 on Felucca " FELUCCA_VERSION;
+        static const char WANT_PLAIN[] = "AERO|AERO|clear-sky groovebox|AERO " AERO_VERSION " \xB7 on Felucca " FELUCCA_VERSION;
+        int plain = ux.pal_i == UI_GREY_INDEX || ux.pal_i == UI_BW_INDEX;
         splash_seen[0] = 0;
         in_splash = 1;
         draw_splash();
         in_splash = 0;
-        {   /* the picture: the horizon two whole rows of one colour, not BG; the sun above it (its centre column at the
-             * stripes' rows shows the sky); BG in the corners at the top; the release line's band BG at its edges */
-            uint16_t bg = host_screen[0], hz = host_screen[150u * 240u];
-            int32_t x, bad = hz == bg;
-            for (x = 0; x < 240; x++)
-                bad |= host_screen[150u * 240u + (uint32_t)x] != hz || host_screen[151u * 240u + (uint32_t)x] != hz;
-            bad |= host_screen[100u * 240u + 120u] == host_screen[100u * 240u + 4u];     /* the sun on the sky */
-            bad |= host_screen[136u * 240u + 120u] != host_screen[136u * 240u + 4u];     /* a stripe: the sky through */
-            bad |= host_screen[239u * 240u + 239u] != bg || host_screen[2u * 240u + 239u] != bg;
+        {   /* the picture: the sun on the sky (its centre not the sky beside it), the hill under the sky (the bottom
+             * corners not the top ones), and, but in GREY and MONO (flat), a sky that changes from the top down */
+            uint16_t top = host_screen[2u * 240u + 2u];
+            int32_t bad = host_screen[(uint32_t)SPL_SUN_Y * 240u + SPL_SUN_X] == host_screen[(uint32_t)SPL_SUN_Y * 240u + 2u];
+            bad |= host_screen[238u * 240u + 2u] == top || host_screen[238u * 240u + 237u] == host_screen[2u * 240u + 237u];
+            if (!plain)
+                bad |= host_screen[110u * 240u + 2u] == top;
+            else
+                bad |= host_screen[110u * 240u + 2u] != top;
             if (bad) {
-                if (rep) fprintf(rep, "FIND %-26s the splash's horizon, sun, stripes or corners are not as drawn\n", cur_name);
+                if (rep) fprintf(rep, "FIND %-26s the splash's sky, sun or hill are not as drawn\n", cur_name);
                 nfind++;
             }
         }
+        if (plain && !strcmp(splash_seen, WANT_PLAIN))
+            strcpy(splash_seen, WANT);              /* (GREY, MONO: no shadow under the release line) */
         if (strcmp(splash_seen, WANT)) {
             if (rep) fprintf(rep, "FIND %-26s the splash shows '%s', not '%s'\n", cur_name, splash_seen, WANT);
             nfind++;
         } else {
             static uint8_t said;
-            if (!said++) printf("ui_render: the splash shows NEON " NEON_VERSION " on Felucca " FELUCCA_VERSION " and its lines\n");
+            if (!said++) printf("ui_render: the splash shows AERO " AERO_VERSION " on Felucca " FELUCCA_VERSION " and its lines\n");
         }
         return;
     }
@@ -2260,7 +2265,7 @@ int main(int argc, char **argv)
     const char *out = argc > 1 ? argv[1] : "build/ui_new";
     char path[600];
     uint32_t p, s;
-    static const char *const SHOW[] = {"GREY", "MONO", "GREEN", "PAPER", "NIGHT", "SUNSET"};   /* (NIGHT: #50, to review; SUNSET: NEON's default) */
+    static const char *const SHOW[] = {"GREY", "MONO", "GREEN", "PAPER", "NIGHT", "SUNSET", "AQUA"};   /* (NIGHT: #50, to review; SUNSET: NEON's default; AQUA: AERO's) */
     snprintf(path, sizeof path, "%s/report.txt", out);
     rep = fopen(path, "w");
     if (!rep) { fprintf(stderr, "cannot write %s\n", path); return 1; }

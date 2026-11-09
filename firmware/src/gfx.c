@@ -388,6 +388,17 @@ static const uint16_t *ramp(uint16_t fg, uint16_t bg)
     return v;
 }
 
+/* AERO: ink laid over what is already on the canvas (a gradient: the splash's sky, the glass cards), not ramped to
+ * one known background: rv = RV_OVER blends over_fg into each pixel under the glyph by its coverage (the curve of the
+ * ink: light ink takes CURVE_DARK, as on a dark ground). cv_text_over sets it up. */
+static const uint16_t RV_OVER[1];
+static uint16_t over_fg;
+static const uint8_t *over_cv;
+static uint16_t over_px(uint16_t under_swapped, uint32_t v)
+{
+    return swap16(ux_mix(swap16(under_swapped), over_fg, (int32_t)over_cv[v] * 100 / 255));
+}
+
 /* w x h nibbles, rows back to back, at canvas (x, y) */
 static void cv_alpha(int32_t x, int32_t y, uint32_t w, uint32_t h, const uint8_t *d, const uint16_t *rv)
 {
@@ -405,7 +416,7 @@ static void cv_alpha(int32_t x, int32_t y, uint32_t w, uint32_t h, const uint8_t
             uint32_t v = (d[k >> 1] >> ((k & 1u) ? 0 : 4)) & 15u;
             int32_t px = x + (int32_t)gx;
             if (v && (uint32_t)px < cv_w)
-                row[px] = rv[v];
+                row[px] = rv == RV_OVER ? over_px(row[px], v) : rv[v];
         }
     }
     GFX_HOOK_PIXELS(w * h);
@@ -481,7 +492,7 @@ static void cv_alpha_hc(int32_t x, int32_t y, uint32_t w, uint32_t h, const uint
                 uint32_t k;
                 for (k = 0; k < n; k++, px += dx)
                     if ((uint32_t)px < cv_w)
-                        row[px] = rv[v];
+                        row[px] = rv == RV_OVER ? over_px(row[px], v) : rv[v];
             }
             gx += n;
             run -= n;
@@ -601,11 +612,10 @@ static int32_t text_run(int32_t x, int32_t y, const aafont_t *f, const char *s, 
  * truest and no glyph is a whole step from its true place (tools/aa_raster.py, text_spacing_test.py).
  * A glyph with one phase (its phases share one bitmap: figures and .) sits at the rounded pen, as when it
  * is drawn alone at text_w of what precedes it (ui_draw.c roll_text). */
-#define CVT_SHADOW 64u   /* flags: a shadow, the same text drawn over it next (NEON's splash): the lint lets the two overlap */
-static int32_t cv_text_flags(int32_t x, int32_t y, const aafont_t *f, const char *s, uint16_t fg, uint16_t bg,
-                             uint32_t flags)
+#define CVT_SHADOW 64u   /* flags: a shadow, the same text drawn over it next (the splash): the lint lets the two overlap */
+static int32_t cv_text_rv(int32_t x, int32_t y, const aafont_t *f, const char *s, const uint16_t *rv, uint32_t flags)
 {
-    int32_t b[4], pen = text_run(x, y, f, s, ramp(fg, bg), b);
+    int32_t b[4], pen = text_run(x, y, f, s, rv, b);
     if (GFX_HOOKS && b[2] > b[0]) {
         int32_t y0 = b[1], y1 = b[3];
         if (b[0] < 0 || b[2] > (int32_t)cv_w || y0 + cv_oy < cv_cy0 || y1 + cv_oy > cv_cy1)
@@ -620,6 +630,18 @@ static int32_t cv_text_flags(int32_t x, int32_t y, const aafont_t *f, const char
     }
     (void)flags;
     return x + ((pen + 8) >> 4);
+}
+static int32_t cv_text_flags(int32_t x, int32_t y, const aafont_t *f, const char *s, uint16_t fg, uint16_t bg,
+                             uint32_t flags)
+{
+    return cv_text_rv(x, y, f, s, ramp(fg, bg), flags);
+}
+/* AERO: fg laid over whatever the canvas shows under the text (RV_OVER) */
+static int32_t cv_text_over(int32_t x, int32_t y, const aafont_t *f, const char *s, uint16_t fg, uint32_t flags)
+{
+    over_fg = fg;
+    over_cv = ux_luma(fg) > 128u ? CURVE_DARK : CURVE_LIGHT;
+    return cv_text_rv(x, y, f, s, RV_OVER, flags);
 }
 static int32_t cv_text_on(int32_t x, int32_t y, const aafont_t *f, const char *s, uint16_t fg, uint16_t bg)
 {

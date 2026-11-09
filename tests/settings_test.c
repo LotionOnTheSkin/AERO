@@ -47,8 +47,10 @@ int main(void)
         assert(palette_from_stored(UI_PAL_TAG + 0u) == UI_GREY_INDEX && !strcmp(UI_PALETTES[UI_GREY_INDEX].name, "GREY"));
         assert(UI_BW_INDEX == 9u && !strcmp(UI_PALETTES[UI_BW_INDEX].name, "MONO") &&
                palette_from_stored(UI_PAL_TAG + UI_BW_INDEX) == UI_BW_INDEX && palette_stored_ok(UI_PAL_TAG + UI_BW_INDEX));
-        /* NEON: SUNSET appended after MONO (ids stay), the default of a fresh FM-1 */
-        assert(UI_DEFAULT_INDEX == NPALETTES - 1u && !strcmp(UI_PALETTES[UI_DEFAULT_INDEX].name, "SUNSET") &&
+        /* NEON: SUNSET appended after MONO (ids stay); AERO: AQUA after it, the default of a fresh FM-1 */
+        assert(UI_SUNSET_INDEX == 10u && !strcmp(UI_PALETTES[UI_SUNSET_INDEX].name, "SUNSET") &&
+               palette_from_stored(UI_PAL_TAG + UI_SUNSET_INDEX) == UI_SUNSET_INDEX);
+        assert(UI_DEFAULT_INDEX == NPALETTES - 1u && !strcmp(UI_PALETTES[UI_DEFAULT_INDEX].name, "AQUA") &&
                palette_from_stored(UI_PAL_TAG + UI_DEFAULT_INDEX) == UI_DEFAULT_INDEX &&
                palette_stored_ok(UI_PAL_TAG + UI_DEFAULT_INDEX));
         q.palette = palette_to_stored(5);

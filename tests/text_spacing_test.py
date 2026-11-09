@@ -174,9 +174,10 @@ def main():
     a = ap.parse_args()
     RULE[0] = a.rule
     faces = parse(a.header)
-    # (NEON: tools/build.py generates the "neon" faces; a face's tracking, its preset's 6th field in em, is set on
-    # purpose: every gap is that much tighter or looser than the font's own, so the error is measured from it)
-    spec = {n: (font, px, tr * px) for n, font, px, _r, _e, tr, *_ in gf.preset("neon")}
+    # (AERO: tools/build.py generates the "aero" faces, as NEON did its "neon" ones; a face's tracking, its preset's
+    # 6th field in em, is set on purpose: every gap is that much tighter or looser than the font's own, so the error
+    # is measured from it)
+    spec = {n: (font, px, tr * px) for n, font, px, _r, _e, tr, *_ in gf.preset("aero")}
     bad = 0
     for name, f in faces.items():
         font, px, track = spec[name]

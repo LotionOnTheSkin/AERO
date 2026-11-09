@@ -205,7 +205,8 @@ static const uint16_t MTAB_ICON[MTAB_COUNT] = {ICON_X_EYE, ICON_X_KNOB, ICON_X_S
 #define MT_NX 24                                       /* the name's pen in the one shown; 10 px after it */
 #define MT_X0 6
 #define MT_X1 234
-#define MT_GAP 5                                       /* between two tabs, always (the bar centred in MT_X0..MT_X1; 1.2, five
+#define MT_GAP 4                                       /* between two tabs, always (the bar centred in MT_X0..MT_X1; AERO: 4,
+                                                        * Nunito's CONTROL fits LARGE; 1.2, five
                                                         * tabs: 5, up to 1.1.5 8) */
 #define MT_ONE 64                                      /* mt.pos per tab */
 #define MP_Y 59                                        /* the rows' panel */
