@@ -1444,6 +1444,21 @@ static int test_categories(void)
     bad += check("categories: every factory preset of every engine has one (the table's strings == the preset counts)",
                  ok && preset_cat(0, 2) == CAT_BASS && preset_cat(ENGI_DRUM, 0) == CAT_DRUM && preset_cat(ENGI_FM6, 0) == CAT_KEYS &&
                  preset_cat(ENGI_DRUM, 9) == CAT_DRUM && preset_cat(0, 99) == CAT_OTHER);
+#if FELUCCA_NEON
+    {   /* AERO: NEON's presets 0..15 in bytes 30..31 of SLICE's row, its own (AERO's, 16..31) in bytes 28..29; SLICE's
+         * reach stops before both; the rows of MIDI LEARN (14) and the settings (15) untouched */
+        uint8_t was14 = favorites.factory[14][3], was15 = favorites.factory[15][3];
+        int fok = ENGINES[ENGI_NEON]->npresets == 24u &&
+                  favorite_set(ENGI_NEON, 3, 1) && favorites.factory[13][30] == 0x08u &&
+                  favorite_set(ENGI_NEON, 17, 1) && favorites.factory[13][28] == 0x02u && favorite_has(ENGI_NEON, 17) &&
+                  favorite_set(ENGI_NEON, 31, 1) && favorites.factory[13][29] == 0x80u && !favorite_set(ENGI_NEON, 32, 1) &&
+                  !favorite_set(13, 224, 1) && !favorite_set(13, 240, 1) &&
+                  favorites.factory[14][3] == was14 && favorites.factory[15][3] == was15;
+        fok &= favorite_set(ENGI_NEON, 3, 0) && favorite_set(ENGI_NEON, 17, 0) && favorite_set(ENGI_NEON, 31, 0) &&
+               !favorites.factory[13][28] && !favorites.factory[13][29] && !favorites.factory[13][30];
+        bad += check("favourites: NEON's 0..15 in SLICE's bytes 30..31, AERO's 16..31 in 28..29 (SLICE stops before)", fok);
+    }
+#endif
 #if FELUCCA_ADPCM
     {   /* 1.8: ADPCM (engine 14, no row of its own) keeps its favourites in settings byte [15][13], through a round trip */
         persist_t p;

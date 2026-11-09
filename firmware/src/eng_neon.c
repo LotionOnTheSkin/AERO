@@ -13,6 +13,11 @@
  *   WAVE SUB    a bass voice: two saws (the second detuned by SPRD) and a square an octave below (SUB). The phases
  *               restart with every note, so each one hits the same way: punchy, sequenced 8th/16th-note bass.
  *
+ *   WAVE GLASS  (AERO) glassy tones: a sine carrier phase-modulated by a sine at RTIO (SPRD: 1 + v / 16, so 16 is
+ *               2:1, 40 is 3.5:1, a bell; between the integers inharmonic, glassier), as deep as BRIT (BLND: up to
+ *               ~4 rad), the depth following the envelope down to a third of it (bright strike, a clear tail), and
+ *               a second carrier MOVE detunes (up to ~10 cents) for shimmer. Phases restart with every note.
+ *
  *   MOVE also gives each note its own small tuning offset (up to +-3.3 cents) and a slow pitch wobble (up to +-3.4
  *   cents, tape-like at 127). The LFO runs at 0.5..1 Hz, a different rate for every note, so chords shimmer.
  *   WARM drives the oscillators into a soft clipper (1x..3x) before the filter.
@@ -27,11 +32,13 @@
  *   s[4], s[5]  outer side saws (SUPER), as phases (uint32 in int32)
  *   s[2]        the note's random seed (its drift and LFO rate)      s[3]  the LFO's phase
  * keep: the filters and the outer saws' phases (bits 0, 1, 4..7): a retriggered voice glides on, as on an analog. */
-static const char *const N_NEON_WAVE[] = {"SUPER", "PWM", "SUB"};
-enum { NW_SUPER, NW_PWM, NW_SUB };
+static const char *const N_NEON_WAVE[] = {"SUPER", "PWM", "SUB", "GLASS"};
+enum { NW_SUPER, NW_PWM, NW_SUB, NW_GLASS };
 static const param_desc_t NEON_SIDE = {"SIDE", F_PCT, 0, 127, 90, 0, 0};   /* E2's range and default, per WAVE */
 static const param_desc_t NEON_SAW = {"SAW", F_PCT, 0, 127, 90, 0, 0};
 static const param_desc_t NEON_SUB = {"SUB", F_PCT, 0, 127, 90, 0, 0};
+static const param_desc_t NEON_RTIO = {"RTIO", F_INT, 0, 127, 50, 0, 0};   /* (AERO) GLASS: E1, the ratio */
+static const param_desc_t NEON_BRIT = {"BRIT", F_PCT, 0, 127, 90, 0, 0};   /* (AERO) GLASS: E2, the depth */
 
 /* the LFO: 0.5 Hz a block (CTL samples) plus up to 0.5 Hz more, a note's own (its seed) */
 #define NEON_LFO_BASE ((uint32_t)(((uint64_t)CTL << 31) / (uint64_t)FS))
@@ -42,9 +49,12 @@ static const param_desc_t NEON_SUB = {"SUB", F_PCT, 0, 127, 90, 0, 0};
 #define NEON_TRIM_SUPER 10322    /* 0.63 (-4.0 dB) */
 #define NEON_TRIM_PWM 11796      /* 0.72 (-2.9 dB) */
 #define NEON_TRIM_SUB 13926      /* 0.85 (-1.4 dB) */
+#define NEON_TRIM_GLASS 9830     /* 0.60 (-4.4 dB): sines carry their whole level in a few partials */
 
 static const param_desc_t *neon_desc(const track_t *t, uint32_t k)
 {
+    if (t->p[P_E0] == NW_GLASS)
+        return k == 1u ? &NEON_RTIO : k == 2u ? &NEON_BRIT : 0;
     if (k != 2u)
         return 0;
     switch (t->p[P_E0]) {
@@ -76,7 +86,10 @@ static void neon_note_on(track_t *t, voice_t *v)
     v->s[2] = (int32_t)r;                         /* this note's drift and LFO rate */
     v->s[3] = (int32_t)neon_rnd(&r);              /* the LFO starts anywhere: no two notes move together */
     v->s[0] = v->s[1] = v->s[6] = v->s[7] = 0;    /* the filters (kept on a retrigger) */
-    if (t->p[P_E0] == NW_SUB) {                   /* bass: every note starts its waves at the same point */
+    if (t->p[P_E0] == NW_GLASS) {                 /* glass: every strike the same, the sines from 0 (no click) */
+        v->ph[0] = v->ph[1] = v->ph[2] = 0;
+        v->s[4] = v->s[5] = 0;
+    } else if (t->p[P_E0] == NW_SUB) {            /* bass: every note starts its waves at the same point */
         v->ph[0] = v->ph[1] = 0x80000000u;      /* the saws start at their zero crossing */
         v->ph[2] = 0x40000000u;                 /* the sub square mid-way through a half-cycle, off its edge */
         v->s[4] = v->s[5] = 0;
@@ -171,6 +184,27 @@ static void neon_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
             }
             out[i] += voice_amp(s, m, i) * 2;
         }
+    } else if (wave == NW_GLASS) {
+        /* the modulator at 1 + RTIO / 16 of the carrier; the depth BRIT (up to ~4 rad, as phase: 2^32 / 2pi x 4 /
+         * 32768 = 83443 a unit of the sine) x (1/3 + 2/3 of the envelope); carrier B MOVE up (up to ~10 ct) */
+        uint32_t incm = (uint32_t)(((uint64_t)inc0 * (uint32_t)(16 + sprd)) >> 4);
+        uint32_t inc1 = neon_det(inc0, (move * 24) / 127 - wob);
+        int32_t env = m->envq15 < 0 ? 0 : m->envq15 > 32767 ? 32767 : m->envq15;
+        int32_t dep = (int32_t)(((int64_t)blnd * 5215 / 127) * (10923 + ((env * 2) / 3)) >> 15);   /* x16 below */
+        for (i = 0; i < n; i++) {
+            uint32_t pm = (uint32_t)(osc_sine(ph2) * dep) << 4;
+            int32_t s = (osc_sine(ph0 + pm) + osc_sine(ph1 + pm)) >> 1;
+            ph0 += inc0;
+            ph1 += inc1;
+            ph2 += incm;
+            if (warm)
+                s = softclip(((s >> 2) * (drive >> 2)) >> 11);
+            {
+                int32_t y = tsvf_lp(&f2, tsvf_lp(&f1, s >> 1, &a1, &a2), &b1, &b2);
+                s = (soft_knee(y, 16000) * NEON_TRIM_GLASS) >> 13;
+            }
+            out[i] += voice_amp(s, m, i) * 2;
+        }
     } else {
         /* SUB: saw A, saw B (+SPRD: up to +30 ct, wobbling a little the other way), a square an octave down */
         uint32_t inc1 = neon_det(m->inc, sprd * 71 / 127 - wob);
@@ -221,13 +255,26 @@ static const preset_t NEON_PRESETS[] = {
     {"MIDNIGHT", {0, 90, 110, 60, 45, 25, 20, 30}, {105, 100, 120, 110}, 20, 0, FX(0, 60, 30, 100), PAT(5)},
     {"SUB DRV", {2, 0, 127, 0, 28, 0, 60, 64}, {0, 60, 100, 30}, 10, 1, FX(0, 0, 0, 0), PAT(8)},
     {"OUTRUN", {2, 20, 60, 8, 55, 50, 50, 64}, {0, 58, 10, 35}, 50, 1, FX(15, 0, 10, 10), PAT(1)},
+    /* AERO: clear-sky sounds. Airy pads, glassy bells (GLASS: SPRD the ratio, BLND the brightness), bright plucks */
+    {"SKYGLASS", {0, 60, 90, 70, 88, 5, 5, 40}, {100, 95, 120, 108}, 6, 0, FX(0, 80, 30, 100), PAT(5)},
+    {"MEADOW", {1, 45, 30, 90, 72, 8, 10, 48}, {104, 92, 118, 104}, 10, 0, FX(0, 100, 20, 90), PAT(5)},
+    {"CLOUDS", {3, 16, 28, 60, 80, 0, 0, 30}, {108, 100, 120, 112}, 0, 0, FX(0, 90, 35, 110), PAT(5)},
+    {"AURORA", {0, 100, 120, 110, 62, 10, 0, 30}, {112, 100, 122, 115}, 15, 0, FX(0, 60, 40, 115), PAT(5)},
+    {"AQUABELL", {3, 40, 58, 30, 110, 0, 0, 64}, {0, 108, 0, 100}, 0, 0, FX(0, 30, 45, 95), PAT(13)},
+    {"CRYSTAL", {3, 48, 80, 20, 115, 0, 0, 64}, {0, 102, 0, 96}, 0, 0, FX(0, 20, 55, 100), PAT(13)},
+    {"DEW BELL", {3, 6, 55, 40, 105, 0, 0, 64}, {0, 98, 0, 92}, 0, 0, FX(0, 40, 40, 90), PAT(13)},
+    {"CLEAR KY", {3, 0, 35, 50, 100, 0, 10, 64}, {0, 100, 45, 82}, 0, 0, FX(0, 70, 20, 60), PAT(6)},
+    {"DEW DROP", {1, 25, 60, 20, 58, 30, 10, 64}, {0, 70, 0, 60}, 45, 0, FX(0, 40, 60, 70), PAT(13)},
+    {"SPARKLE", {0, 40, 80, 15, 55, 25, 10, 64}, {0, 66, 0, 58}, 50, 0, FX(0, 30, 70, 60), PAT(13)},
+    {"BUBBLES", {3, 16, 80, 10, 100, 0, 0, 64}, {0, 62, 0, 52}, 0, 0, FX(0, 20, 60, 70), PAT(13)},
+    {"SOFT SUB", {2, 10, 70, 10, 45, 15, 10, 64}, {0, 70, 80, 40}, 15, 1, FX(0, 10, 0, 15), PAT(2)},
 };
 
 static const engine_t ENG_NEON = {
     .name = "NEON",
     .page_title = {"OSC", "FLT"},
     .edit = {
-        {"WAVE", F_ENUM, 0, 2, 0, N_NEON_WAVE, 0},
+        {"WAVE", F_ENUM, 0, 3, 0, N_NEON_WAVE, 0},
         {"SPRD", F_PCT, 0, 127, 50, 0, 0},
         {"BLND", F_PCT, 0, 127, 90, 0, 0},
         {"MOVE", F_PCT, 0, 127, 30, 0, 0},

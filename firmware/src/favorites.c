@@ -14,6 +14,7 @@ static favorites_t favorites __attribute__((section(".pool")));
 /* NEON (engine 15, 12 presets) keeps its favourites in the last 2 bytes of SLICE's row (engine 13: 2 presets, its bits
  * 0..1; bytes 30..31 no firmware used): SLICE's own reach stops before them */
 #define FAV_NEON_AT 240u
+#define FAV_AERO_AT 224u   /* AERO: NEON's presets 16 .. 31 (its own) in bytes 28 .. 29, SLICE's reach stopping before them */
 static uint8_t *fav_bit(uint32_t engine, uint32_t preset, uint8_t *mask)   /* the byte and bit of a factory preset */
 {
 #if FELUCCA_NEON
@@ -22,6 +23,13 @@ static uint8_t *fav_bit(uint32_t engine, uint32_t preset, uint8_t *mask)   /* th
         return &favorites.factory[13][(FAV_NEON_AT + preset) / 8u];
     }
     if (engine == 13u && preset >= FAV_NEON_AT)
+        return 0;
+    if (engine == ENGI_NEON && preset >= 256u - FAV_NEON_AT && preset < 2u * (256u - FAV_NEON_AT)) {
+        preset -= 256u - FAV_NEON_AT;               /* AERO: presets 16 .. 31 in bytes 28 .. 29 of the same row */
+        *mask = (uint8_t)(1u << (preset % 8u));
+        return &favorites.factory[13][(FAV_AERO_AT + preset) / 8u];
+    }
+    if (engine == 13u && preset >= FAV_AERO_AT)
         return 0;
 #endif
     if (engine < NENGINES && engine < FAV_ENGINES && preset < 256u) {

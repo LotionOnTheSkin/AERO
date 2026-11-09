@@ -9,7 +9,11 @@ the AERO work is the look, the menus and the sounds. Everything else is Felucca 
   (`.github/workflows/build-aero.yml`).
 - **Try it in the browser:** open the [FM-1 emulator](https://joakimeriksson.github.io/fm1-emu), load `aero.fwsc`, press Start.
 - **The engine (from NEON):** NEON is the last engine. On the PRESETS page, turn the ENG knob to NEON.
-  `firmware/src/eng_neon.c` (MIT): WAVE (SUPER / PWM / SUB), SPRD, BLND, MOVE, CUT, RES, WARM, KTR.
+  `firmware/src/eng_neon.c` (MIT): WAVE (SUPER / PWM / SUB / GLASS), SPRD, BLND, MOVE, CUT, RES, WARM, KTR.
+  AERO adds WAVE GLASS (glassy FM tones: SPRD becomes RTIO, the modulator's ratio, 1 + RTIO / 16; BLND becomes
+  BRIT, the depth, which follows the envelope) and 12 presets after NEON's own: airy pads (SKYGLASS, MEADOW,
+  CLOUDS, AURORA), glassy bells and keys (AQUABELL, CRYSTAL, DEW BELL, CLEAR KY), bright plucks (DEW DROP,
+  SPARKLE, BUBBLES) and a bass (SOFT SUB).
 - **The look:** Frutiger Aero. A clear-sky boot screen (a glossy aqua sun, bubbles, a green hill), the AQUA palette
   (mist, deep aqua, ink, leaf green) as the default (MENU > COLOR still offers NEON's SUNSET and Felucca's palettes),
   Nunito for values and titles and Open Sans for labels. In AQUA (STYLE FLAT) the main pages are glass over a sky:
