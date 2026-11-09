@@ -1,25 +1,21 @@
-# NEON — Felucca with a synthwave engine
+# AERO — the clear-sky groovebox
 
-This fork of [Felucca](https://github.com/hugelton/Felucca) adds **NEON**, a synthwave sound engine for the M-VAVE FM-1:
-lush supersaw pads, Juno-style PWM strings and deep pulsing bass, through a 24 dB/oct filter with warmth and slow
-analog drift (MOVE). Everything else is Felucca as it is upstream.
+AERO is a custom firmware for the M-VAVE FM-1 with a Frutiger Aero look: sky gradients, glossy glass cards, aqua
+selection bars, green pill badges and bubbles. It is a fork of [NEON](https://github.com/LotionOnTheSkin/NEON)
+(itself a fork of [Felucca](https://github.com/hugelton/Felucca)) and keeps NEON's synth engine as a sound source;
+the AERO work is the look, the menus and the sounds. Everything else is Felucca as it is upstream.
 
-- **Download:** [Releases › neon-latest › `neon.fwsc`](../../releases/tag/neon-latest), built by GitHub Actions on every push
-  (`.github/workflows/build-neon.yml`).
-- **Try it in the browser:** open the [FM-1 emulator](https://joakimeriksson.github.io/fm1-emu), load `neon.fwsc`, press Start.
-- **Play it:** NEON is the last engine. On the PRESETS page, turn the ENG knob to NEON. Twelve presets: NEON SKY,
-  SUMMERS, DRIVE BS, NIGHT BS, HERO LD, BRASS 85, STAB, ARP PLK, VHS STR, MIDNIGHT, SUB DRV, OUTRUN.
-- **The look:** Sunset Drive. A sun-and-grid boot screen, the SUNSET palette (deep indigo, magenta, cyan) as the default
-  (MENU > COLOR still offers Felucca's palettes), and Chakra Petch type throughout.
-- **SUNSET DRIVE:** tap HOME from HOME to step HOME > MIXER > CLOCK > **DRIVE**: a visualizer where the grid rolls
-  toward you one line a beat (it follows the tempo and stops when you stop), the sun swells with the loudest track,
-  the horizon glows with the bass, and a light per track shines in the sky.
-- **The engine:** `firmware/src/eng_neon.c` (MIT). WAVE (SUPER / PWM / SUB), SPRD, BLND, MOVE, CUT, RES, WARM, KTR.
-- **Status:** experimental. It passes Felucca's host test suite; it has not yet been played on a real FM-1. Its CPU
-  cost was estimated on a computer (about 2 to 2.5 ANALOG voices a voice), so it is capped at 6 voices.
+- **Download:** [Releases › aero-latest › `aero.fwsc`](../../releases/tag/aero-latest), built by GitHub Actions on every push
+  (`.github/workflows/build-aero.yml`).
+- **Try it in the browser:** open the [FM-1 emulator](https://joakimeriksson.github.io/fm1-emu), load `aero.fwsc`, press Start.
+- **The engine (from NEON):** NEON is the last engine. On the PRESETS page, turn the ENG knob to NEON.
+  `firmware/src/eng_neon.c` (MIT): WAVE (SUPER / PWM / SUB), SPRD, BLND, MOVE, CUT, RES, WARM, KTR.
+- **Status:** experimental, work in progress. It passes Felucca's host test suite; it has not yet been played on a real
+  FM-1. For now the look is still NEON's Sunset Drive; the AQUA palette, Nunito / Open Sans type, the AERO boot screen
+  and glass cards are coming next.
 
-Engine numbers: NEON is engine 15; 14 stays reserved for Felucca's ADPCM, so projects move between this firmware and
-upstream Felucca without a mismatch. A project or user preset with a NEON sound does not load on upstream Felucca.
+Engine numbers: NEON is engine 15; 14 stays reserved for Felucca's ADPCM, so projects move between this firmware,
+NEON and upstream Felucca without a mismatch. A project or user preset with a NEON sound does not load on upstream Felucca.
 
 ---
 

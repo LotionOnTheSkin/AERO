@@ -1,7 +1,8 @@
-# Builds the NEON firmware (Felucca with the NEON engine) on GitHub's Linux machines, where JieLi's toolchain runs
-# natively, and publishes it as the "neon-latest" release: Releases > neon-latest > neon.fwsc. Then runs Felucca's
-# whole test suite against the build. Runs on every push to main, or by hand (Actions > Build NEON firmware > Run).
-name: Build NEON firmware
+# Builds the AERO firmware (Felucca with the NEON engine and the Frutiger Aero look) on GitHub's Linux machines, where
+# JieLi's toolchain runs natively, and publishes it as the "aero-latest" release: Releases > aero-latest > aero.fwsc.
+# Then runs Felucca's whole test suite against the build. Runs on every push to main, or by hand
+# (Actions > Build AERO firmware > Run).
+name: Build AERO firmware
 
 on:
   push:
@@ -12,7 +13,7 @@ permissions:
   contents: write          # to publish the release
 
 concurrency:
-  group: build-neon
+  group: build-aero
   cancel-in-progress: true
 
 jobs:
@@ -71,29 +72,29 @@ jobs:
       - name: Name the package
         run: |
           mkdir -p dist
-          cp build/felucca.fwsc dist/neon.fwsc
-          cp build/felucca.bin dist/neon-app.bin
-          (cd dist && sha256sum neon.fwsc neon-app.bin > SHA256SUMS)
+          cp build/felucca.fwsc dist/aero.fwsc
+          cp build/felucca.bin dist/aero-app.bin
+          (cd dist && sha256sum aero.fwsc aero-app.bin > SHA256SUMS)
           ls -l dist
 
       - name: Keep the build with this run
         uses: actions/upload-artifact@v4
         with:
-          name: neon-firmware-${{ github.sha }}
+          name: aero-firmware-${{ github.sha }}
           path: dist/
 
-      - name: Publish as the neon-latest release
+      - name: Publish as the aero-latest release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete neon-latest --cleanup-tag --yes 2>/dev/null || true
-          gh release create neon-latest dist/neon.fwsc dist/neon-app.bin dist/SHA256SUMS \
-            --target "$GITHUB_SHA" --prerelease --title "NEON (latest build)" \
-            --notes "Felucca with the NEON synthwave engine, built from ${GITHUB_SHA::7}.
+          gh release delete aero-latest --cleanup-tag --yes 2>/dev/null || true
+          gh release create aero-latest dist/aero.fwsc dist/aero-app.bin dist/SHA256SUMS \
+            --target "$GITHUB_SHA" --prerelease --title "AERO (latest build)" \
+            --notes "AERO, the clear-sky groovebox: Felucca with the NEON engine and a Frutiger Aero look, built from ${GITHUB_SHA::7}.
 
-          **Try it without an FM-1:** open https://joakimeriksson.github.io/fm1-emu, load \`neon.fwsc\`, press Start. NEON is the last engine: pick it with the PRESETS page's ENG knob.
+          **Try it without an FM-1:** open https://joakimeriksson.github.io/fm1-emu, load \`aero.fwsc\`, press Start. NEON is the last engine: pick it with the PRESETS page's ENG knob.
 
-          **Install it on an FM-1** (at your own risk; back up with the editor first): \`python3 tools/fm1_install.py neon.fwsc\`, or Felucca's web installer. M-VAVE's updater always takes the FM-1 back to the official firmware.
+          **Install it on an FM-1** (at your own risk; back up with the editor first): \`python3 tools/fm1_install.py aero.fwsc\`, or Felucca's web installer. M-VAVE's updater always takes the FM-1 back to the official firmware.
 
           Experimental: built and tested on a computer (Felucca's host test suite), not yet played on a real FM-1."
 

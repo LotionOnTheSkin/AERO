@@ -1,5 +1,8 @@
 # Credits
 
+AERO is Neon Summers' ([@LotionOnTheSkin](https://github.com/LotionOnTheSkin)), a fork of
+[NEON](https://github.com/LotionOnTheSkin/NEON) (the NEON engine and the cloud build), which is a fork of Felucca.
+
 Felucca is Leo Kuroshita's ([@kurogedelic](https://github.com/kurogedelic), [Hügelton Instruments](https://hugelton.com)). It uses and
 thanks the work below; each keeps its own licence (see [LICENSE](LICENSE), [LICENSING.md](LICENSING.md) and [LICENSES/](LICENSES/)).
 
