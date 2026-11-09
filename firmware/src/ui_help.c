@@ -54,7 +54,7 @@ static const struct { const char *title, *hint; } HELP_PAGE[] = {
     {"AUTOMATION", "[K1]ROW[OCT+]DO[EDIT]DELETE"},
     {"MIXER", "[K4]MUTE[ALGO]TRACK[HOME]CLOCK"},
     {"CLOCK", "[SELECT]TEMPO[GLO]HOLD: TAP"},
-    {"DRIVE", "[PLAY]DRIVE[HOME]HOME"},
+    {"LAGOON", "[PLAY]PLAY[HOME]HOME"},
 };
 #define H_HOME "[PRESETS]SOUND[HOME]HOLD: MENU"
 #define H_LEVELS "[K1-4]T1-T4 LEVEL[HOME]MIXER"

@@ -2796,7 +2796,7 @@ static int test_page_cycles(void)
         ok &= f != FAM_SEQ || PAGES[i].graph == GR_ROLL || PAGES[i].graph == GR_EVENTS;
         ok &= f != FAM_GLO || PAGES[i].graph == GR_SONG;   /* (1.2: GLO's only page) */
         ok &= f != FAM_TRK || PAGES[i].graph == GR_TRK || str_eq(PAGES[i].title, "CLOCK") ||
-              (str_eq(PAGES[i].title, "DRIVE") && PAGES[i].graph == GR_DRIVE);   /* HOME's: MIXER CLOCK (NEON: DRIVE) */
+              (str_eq(PAGES[i].title, "LAGOON") && PAGES[i].graph == GR_DRIVE);   /* HOME's: MIXER CLOCK (NEON: DRIVE) */
         ok &= PAGES[i].graph != GR_TRK || f == FAM_TRK;
         ui_power_on(); ui.home = 0; ui.page = (uint8_t)i; page_entered();
         ok &= FAM_BTN[cur_fam()] == (f == FAM_TRK ? B_HOME : f == FAM_GLO ? B_GLO : f == FAM_SEQ ? B_SEQ :
@@ -2974,7 +2974,7 @@ static int test_product_ux(void)
         song.g[G_CLOCK] = clk;
     }
     press(B_HOME);
-    ok &= !ui.home && !ui.menu && str_eq(cur_page()->title, "DRIVE") && cur_fam() == FAM_TRK;   /* (NEON: SUNSET DRIVE) */
+    ok &= !ui.home && !ui.menu && str_eq(cur_page()->title, "LAGOON") && cur_fam() == FAM_TRK;   /* (NEON: SUNSET DRIVE) */
     press(B_HOME);
     ok &= ui.home && !ui.menu;
     press(B_HOME);
@@ -9692,7 +9692,7 @@ static int test_home_tracks(void)
     bad += check("1.3 HOME > TRACKS: K1..K4 edit the selected track (HOME's four), ALGORITHM moves the selected row", ok);
     press(B_HOME); ok = !ui.home && cur_page()->graph == GR_TRK;
     press(B_HOME); ok &= !ui.home && str_eq(cur_page()->title, "CLOCK");
-    press(B_HOME); ok &= !ui.home && str_eq(cur_page()->title, "DRIVE");   /* (NEON) */
+    press(B_HOME); ok &= !ui.home && str_eq(cur_page()->title, "LAGOON");   /* (NEON) */
     press(B_HOME); ok &= ui.home;
     frame();
     ok &= tr_px(3 + 22, tr_y(3) + 1) == T_THEME;

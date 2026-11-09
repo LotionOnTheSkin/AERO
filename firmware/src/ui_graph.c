@@ -2375,14 +2375,263 @@ static void draw_drive(void)
     drive_pass((int32_t)DRV_PASS, ph, loud, bass);
 }
 
+/* AERO: LAGOON (the visualizer page: HOME tapped from CLOCK; in SUNSET, NEON's SUNSET DRIVE above). A clear-sky
+ * lagoon over H_HEAD .. Y_FOOT (178 rows): the sky above the water line brightens with the mix (the loudest track) and
+ * a glossy sun swells with it; under the line, deep aqua water with slanted light rays, seaweed swaying a sway a beat,
+ * and a fish that swims back and forth (always, but for MENU > ANIM OFF), wagging its tail, darting on the kick. Each
+ * track sends up bubbles from its quarter of the floor, more and bigger the louder it plays; they wobble up and pop at
+ * the line. The water line laps gently and rings out from the middle on the kick (a DRUM-category track's level jumping;
+ * none: the loudest track's). Levels as SUNSET DRIVE's (drv.lv: the MIXER's meters). AQUA takes the design's colours,
+ * another palette its tokens; GREY and MONO draw it flat (tokens, no blends: bubbles as rings). Drawn in two passes of
+ * 240 x 89, again whenever the picture moves */
+#define LG_WL 92                                        /* the water line's rest row (in the view) */
+#define LG_NB 6u                                        /* bubbles a track */
+static struct {
+    struct { int16_t x, y, r, w; } b[NTRK][LG_NB];       /* y in 1/16 px, 0 = none; w: the wobble's phase */
+    int32_t fx, dir, kick, kt;                           /* the fish (x in 1/16 px), the kick's ring (0..255, age) */
+    uint8_t prev[NTRK], t;
+    uint32_t seed, sig;
+} lg;
+static uint32_t lg_rnd(void)
+{
+    uint32_t s = lg.seed ? lg.seed : 0x2545F491u;
+    s ^= s << 13; s ^= s >> 17; s ^= s << 5;
+    return lg.seed = s;
+}
+static int32_t lg_sin(uint32_t ph, int32_t a) { return (osc_sine(ph) * a) >> 15; }
+/* the water line's row at column x, frame t */
+static int32_t lg_surf(int32_t x, uint32_t t)
+{
+    int32_t d = x - 120, y = LG_WL + lg_sin((uint32_t)x * 0x02800000u + t * 0x05000000u, 1);
+    if (lg.kick) {                                       /* a ring from the middle: out at ~2 px a frame */
+        int32_t ring = lg.kt * 2 - (d < 0 ? -d : d);
+        if (ring > -40 && ring < 40)
+            y += lg_sin((uint32_t)(ring + 40) * 0x06666666u, lg.kick * 5 / 255);
+    }
+    return y;
+}
+static void lagoon_pass(int32_t y0, uint32_t t, uint32_t loud, uint32_t ph)
+{
+    int plain = drv_plain(), aqua = ux.pal_i == UI_AQUA_INDEX;
+    uint16_t sky0 = plain ? T_BG : aqua ? RGB(0x3A, 0xA0, 0xE8) : ux_mix(T_BG, T_THEME, 70);
+    uint16_t sky1 = plain ? T_BG : aqua ? RGB(0xC8, 0xEE, 0xFF) : ux_mix(T_BG, T_THEME, 20);
+    uint16_t w0 = plain ? T_BG : aqua ? RGB(0x2B, 0xB8, 0xEC) : ux_mix(T_THEME, T_BG, 30);
+    uint16_t w1 = plain ? T_BG : aqua ? RGB(0x07, 0x5A, 0x96) : ux_mix(T_THEME, ux.light ? T_TEXT : T_BG, 55);
+    uint16_t lite = ux.light || aqua ? 0xFFFFu : T_TEXT, weed = plain ? T_THEME : aqua ? RGB(0x5C, 0xBF, 0x3A) : T_ACCENT;
+    int32_t y, x, k, i, wl = LG_WL;
+    int32_t bright = (int32_t)loud * 45 / 255;          /* the sky brightens with the mix */
+    cv_begin(240, DRV_PASS, T_BG);
+    cv_oy = -y0;
+    for (y = y0; y < y0 + (int32_t)DRV_PASS && y < DRV_H; y++) {
+        if (y < wl - 6) {                                /* the sky */
+            uint16_t c = ux_mix(sky0, sky1, y * 100 / (wl - 6));
+            cv_rect(0, y, 240, 1, plain ? T_BG : ux_mix(c, lite, bright));
+        } else if (y > wl + 6) {                         /* the water, deepening; light rays slanting down */
+            int32_t d = (y - wl) * 100 / (DRV_H - wl);
+            uint16_t c = ux_mix(w0, w1, d);
+            cv_rect(0, y, 240, 1, c);
+            if (!plain)
+                for (k = 0; k < 3; k++) {
+                    int32_t rx = 40 + k * 70 + (y - wl) / 2 + lg_sin(t * 0x00800000u + (uint32_t)k * 0x55555555u, 6);
+                    int32_t rw = 14 - (y - wl) / 8;
+                    if (rw > 0)
+                        cv_rect(rx, y, rw, 1, ux_mix(c, lite, 12 - (y - wl) / 8 > 2 ? 12 - (y - wl) / 8 : 2));
+                }
+        }
+    }
+    for (x = 0; x < 240; x++) {                          /* the band around the line, a column at a time */
+        int32_t ys = lg_surf(x, t), y1 = wl - 6, y2 = wl + 6;
+        for (y = y1; y <= y2; y++) {
+            uint16_t c;
+            if (y < ys)
+                c = plain ? T_BG : ux_mix(ux_mix(sky0, sky1, y * 100 / (wl - 6) > 100 ? 100 : y * 100 / (wl - 6)), lite, bright);
+            else if (y <= ys + 1)
+                c = plain ? T_TEXT : ux_mix(lite, w0, y == ys ? 10 : 45);   /* the line: bright foam */
+            else
+                c = plain ? T_BG : ux_mix(w0, w1, (y - wl) * 100 / (DRV_H - wl));
+            cv_pset(x, y, c);
+        }
+    }
+    {                                                    /* the sun, high left, swelling with the mix */
+        int32_t r = 13 + (int32_t)loud * 4 / 255, cx = 36, cy = 30;
+        if (y0 < cy + r + 2)
+            for (y = cy - r - 1; y <= cy + r + 1; y++)
+                for (x = cx - r - 1; x <= cx + r + 1; x++) {
+                    int32_t dx = x - cx, dy = y - cy, dd = dx * dx + dy * dy;
+                    if (dd > r * r) continue;
+                    if (plain) { cv_pset(x, y, T_TEXT); continue; }
+                    {
+                        int32_t g = (int32_t)drv_isqrt((uint32_t)((dx + r / 3) * (dx + r / 3) + (dy + r / 2) * (dy + r / 2))) * 100 / (r * 2);
+                        uint16_t c = aqua ? ux_mix(RGB(0xFF, 0xFB, 0xD8), RGB(0xFF, 0xC8, 0x3A), g > 100 ? 100 : g)
+                                          : ux_mix(lite, T_ACCENT, g > 100 ? 100 : g);
+                        if (dd > (r - 1) * (r - 1)) c = ux_mix(cv_get(x, y), c, 55);   /* a soft edge */
+                        cv_pset(x, y, c);
+                    }
+                }
+    }
+    if (!plain)                                          /* two soft clouds drifting right (a puff of three discs each) */
+        for (i = 0; i < 2; i++) {
+            int32_t cx = (int32_t)((t / (3u + (uint32_t)i * 2u) + (uint32_t)i * 140u) % 300u) - 30, cy = 22 + i * 30, q;
+            static const int8_t P[3][3] = {{-11, 2, 8}, {0, -3, 11}, {12, 2, 7}};   /* dx, dy, r */
+            if (cy + 16 < y0 || cy - 16 >= y0 + (int32_t)DRV_PASS) continue;
+            for (y = cy - 15; y <= cy + 11; y++)
+                for (x = cx - 20; x <= cx + 20; x++) {
+                    int32_t a = 0;
+                    for (q = 0; q < 3; q++) {
+                        int32_t dx = x - cx - P[q][0], dy = y - cy - P[q][1], r = P[q][2], e = r * r - dx * dx - dy * dy;
+                        if (e > 0) a = 80;
+                        else if (e > -2 * r && a < 40) a = 40;           /* the edge, softened */
+                    }
+                    if (a && y < cy + 7)                                 /* a flat base */
+                        cv_pset(x, y, ux_mix(cv_get(x, y), lite, y > cy + 3 ? a * 3 / 4 : a));
+                }
+        }
+    for (i = 0; i < 3; i++) {                            /* seaweed: three strands from the floor, swaying a sway a beat */
+        int32_t bx = 30 + i * 88 + (i == 1) * 6, hgt = 34 + (i & 1) * 12;
+        for (y = DRV_H - hgt; y < DRV_H; y++) {
+            int32_t up = DRV_H - y, sway = lg_sin(ph * 0x01000000u + (uint32_t)i * 0x40000000u + (uint32_t)up * 0x03000000u, up / 6);
+            int32_t wdt = 4 - up * 3 / hgt;
+            cv_rect(bx + sway, y, wdt > 1 ? wdt : 1, 1, plain ? weed : ux_mix(weed, lite, up * 30 / hgt));
+        }
+    }
+    for (k = 0; k < (int32_t)NTRK; k++)                  /* the bubbles */
+        for (i = 0; i < (int32_t)LG_NB; i++) {
+            int32_t by = lg.b[k][i].y >> 4, bx = lg.b[k][i].x + lg_sin((uint32_t)lg.b[k][i].w * 0x01000000u + (uint32_t)by * 0x04000000u, 2);
+            int32_t r = lg.b[k][i].r;
+            if (!lg.b[k][i].y || by - r > y0 + (int32_t)DRV_PASS || by + r < y0) continue;
+            if (plain) {                                  /* a ring */
+                for (y = -r; y <= r; y++)
+                    for (x = -r; x <= r; x++) {
+                        int32_t dd = x * x + y * y;
+                        if (dd <= r * r && dd > (r - 1) * (r - 1))
+                            cv_pset(bx + x, by + y, T_TEXT);
+                    }
+            } else {
+                cv_bubble(bx, by, r);
+            }
+        }
+    {                                                    /* the fish: an oval body, a wagging tail, a fin, an eye */
+        int32_t fx = lg.fx >> 4, fy = 128 + lg_sin(t * 0x00C00000u, 10), dir = lg.dir;
+        int32_t wag = lg_sin(t * (lg.kick > 64 ? 0x18000000u : 0x0C000000u), 3);
+        uint16_t top = plain ? T_TEXT : aqua ? RGB(0xFF, 0xB3, 0x47) : T_ACCENT;
+        uint16_t bot = plain ? T_TEXT : aqua ? RGB(0xF2, 0x6A, 0x12) : ux_mix(T_ACCENT, T_BG, 30);
+        if (fy + 9 >= y0 && fy - 9 < y0 + (int32_t)DRV_PASS)
+            for (y = -8; y <= 8; y++)
+                for (x = -18; x <= 12; x++) {
+                    int32_t lx = x * dir, in = 0;                     /* (lx: along the fish, + ahead) */
+                    int32_t ex = lx + 1, ey = y;
+                    uint16_t c;
+                    if (ex * ex * 36 + ey * ey * 121 <= 36 * 121) in = 1;   /* the body: 11 x 6 */
+                    else if (lx <= -10 && lx >= -17) {                      /* the tail: a fan behind */
+                        int32_t sp = (-10 - lx) + 1, cy2 = y - wag * (-10 - lx) / 7;
+                        if (cy2 >= -sp && cy2 <= sp) in = 2;
+                    } else if (lx >= -5 && lx <= 3 && y >= -9 && y < -5 && y >= -9 + (3 - lx) / 3) in = 3;   /* the fin */
+                    if (!in) continue;
+                    c = ux_mix(top, bot, (y + 8) * 100 / 16);
+                    if (in == 1 && !plain && y >= -5 && y <= -3 && lx > -6 && lx < 8)
+                        c = ux_mix(c, 0xFFFFu, 45);                        /* the gloss */
+                    if (in == 1 && (lx == 6 || lx == 7) && (y == -2 || y == -1))
+                        c = plain ? T_BG : RGB(0x0B, 0x3A, 0x5C);          /* the eye */
+                    if (in == 1 && !plain && lx == 7 && y == -2)
+                        c = 0xFFFFu;
+                    if (in == 1 && plain && (lx == 6 || lx == 7) && (y == -2 || y == -1))
+                        c = T_BG;
+                    cv_pset(fx + x, fy + y, c);
+                }
+    }
+    cv_blit(0, (uint32_t)(H_HEAD + y0));
+    cv_oy = 0;
+}
+static void lagoon_step(uint32_t loud, uint32_t kick_lv)
+{
+    int32_t k, i;
+    int anim = !(ui_prefs & PREF_ANIM_OFF);
+    if (!lg.fx) {
+        lg.fx = 60 << 4;
+        lg.dir = 1;
+    }
+    if (kick_lv) {                                       /* a kick: the ring starts again */
+        lg.kick = (int32_t)kick_lv;
+        lg.kt = 0;
+    } else if (lg.kick) {
+        lg.kick -= lg.kick / 12 + 1;
+        if (lg.kick < 0) lg.kick = 0;
+        lg.kt++;
+    }
+    if (anim) {                                          /* the fish: ~0.6 px a frame, darting on the kick */
+        lg.fx += lg.dir * (10 + lg.kick / 12);
+        if (lg.fx > (214 << 4)) lg.dir = -1;
+        if (lg.fx < (26 << 4)) lg.dir = 1;
+        lg.t++;
+    }
+    for (k = 0; k < (int32_t)NTRK; k++) {
+        uint32_t lv = drv.lv[k];
+        for (i = 0; i < (int32_t)LG_NB; i++)             /* rising: the bigger the faster; at the line they pop */
+            if (lg.b[k][i].y) {
+                lg.b[k][i].y -= (int16_t)(12 + lg.b[k][i].r * 4);
+                if ((lg.b[k][i].y >> 4) - lg.b[k][i].r <= LG_WL + 1)
+                    lg.b[k][i].y = 0;
+            }
+        if (lv > 40u && (lg_rnd() & 255u) < lv / 3u)     /* a new one, the louder the more often and bigger */
+            for (i = 0; i < (int32_t)LG_NB; i++)
+                if (!lg.b[k][i].y) {
+                    lg.b[k][i].y = (int16_t)((DRV_H - 4) << 4);
+                    lg.b[k][i].x = (int16_t)(18 + k * 60 + (int32_t)(lg_rnd() % 26u));
+                    lg.b[k][i].r = (int16_t)(2 + (int32_t)lv * 4 / 255);
+                    lg.b[k][i].w = (int16_t)(lg_rnd() & 255u);
+                    break;
+                }
+    }
+    (void)loud;
+}
+static void draw_lagoon(void)
+{
+    uint32_t k, loud = 0, kick = 0, nd = 0, sig, moving = 0, i, ph;
+    for (k = 0; k < NTRK; k++) {                        /* the levels, as SUNSET DRIVE's */
+        track_t *t = &trk[k];
+        uint32_t m = t->p[P_MUTE] ? 0u : (uint32_t)meter_px(t->peak) * 255u / (TS_MH - 2u);
+        int drum = !t->user && preset_cat(t->eng_req % NENGINES, t->preset) == CAT_DRUM;
+        t->peak = 0;
+        if (m > 255u) m = 255u;
+        drv.lv[k] = (uint8_t)(m >= drv.lv[k] ? m : drv.lv[k] - (drv.lv[k] / 10u + 1u));
+        if (drv.lv[k] > loud) loud = drv.lv[k];
+        if (drum) {
+            nd++;
+            if (drv.lv[k] > lg.prev[k] + 40u && drv.lv[k] > kick) kick = drv.lv[k];
+        }
+    }
+    if (!nd)                                             /* no drums: the loudest track's jumps */
+        for (k = 0; k < NTRK; k++)
+            if (drv.lv[k] > lg.prev[k] + 60u && drv.lv[k] > kick) kick = drv.lv[k];
+    for (k = 0; k < NTRK; k++) lg.prev[k] = drv.lv[k];
+    if (song.playing) {
+        uint32_t q = beat_samples();
+        drv.ph = (uint8_t)(q ? (beat_pos % q) * 256u / q : 0u);
+    }
+    ph = drv.ph;
+    lagoon_step(loud, kick);
+    for (k = 0; k < NTRK; k++)
+        for (i = 0; i < LG_NB; i++) moving |= lg.b[k][i].y != 0;
+    sig = (uint32_t)lg.t * 2654435761u ^ (ph >> 2) * 40503u ^ (loud >> 3) * 9973u ^ ux.gen * 7919u ^ (uint32_t)lg.kick * 31u;
+    if (moving) sig ^= ui.frame * 2246822519u;
+    if (!ui.force && sig == lg.sig)
+        return;
+    lg.sig = sig;
+    lagoon_pass(0, lg.t, loud, ph);
+    lagoon_pass((int32_t)DRV_PASS, lg.t, loud, ph);
+}
+
 static void draw_graph(void)
 {
     const page_t *pg = cur_page();
     const track_t *t = TSEL;
     uint16_t c = ACC;
     uint32_t sig;
-    if (drive_on()) {                                /* NEON: SUNSET DRIVE */
-        draw_drive();
+    if (drive_on()) {                                /* AERO: LAGOON (in SUNSET: NEON's SUNSET DRIVE) */
+        if (ux.pal_i == UI_SUNSET_INDEX)
+            draw_drive();
+        else
+            draw_lagoon();
         return;
     }
     if (!ui.home && pg->graph == GR_TRK) {

@@ -517,7 +517,7 @@ static const page_t PAGES[] = {
     {"CLOCK", FAM_TRK, SC_GLOBAL, GR_NONE, {G_BPM, G_SWING, G_CLOCK, 0xFF}},
     /* NEON: HOME tapped on CLOCK, SUNSET DRIVE (ui_graph.c draw_drive): the visualizer in place of the cards and the
      * panel, header and footer kept; no knobs. Again HOME */
-    {"DRIVE", FAM_TRK, SC_GLOBAL, GR_DRIVE, {0xFF, 0xFF, 0xFF, 0xFF}},
+    {"LAGOON", FAM_TRK, SC_GLOBAL, GR_DRIVE, {0xFF, 0xFF, 0xFF, 0xFF}},   /* (AERO: LAGOON; SUNSET: NEON's DRIVE) */
 };
 #define NPAGES (sizeof(PAGES) / sizeof(PAGES[0]))
 static uint8_t mod_ui_slot;      /* the MOD page: the matrix slot (0..3) KNOB 2..4 edit */

@@ -175,11 +175,11 @@ static int select_page(void)
     turn(EN_SELECT, 1);
     ok &= title_is("CLOCK");
     turn(EN_SELECT, 1);
-    ok &= title_is("DRIVE");                            /* (NEON: SUNSET DRIVE) */
+    ok &= title_is("LAGOON");                            /* (NEON: SUNSET DRIVE) */
     turn(EN_SELECT, 1);
     ok &= ui.home;
     turn(EN_SELECT, -1);
-    ok &= title_is("DRIVE");
+    ok &= title_is("LAGOON");
     turn(EN_SELECT, -1);
     ok &= title_is("CLOCK");
     b0 = song.g[G_BPM];

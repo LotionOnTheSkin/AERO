@@ -19,6 +19,10 @@ the AERO work is the look, the menus and the sounds. Everything else is Felucca 
   Nunito for values and titles and Open Sans for labels. In AQUA (STYLE FLAT) the main pages are glass over a sky:
   frosted header and footer bars, translucent cards and panel with soft shadows, glossy aqua selection pills and
   green / red badges, bubbles in HOME's scope.
+- **LAGOON:** tap HOME from CLOCK (HOME > MIXER > CLOCK > LAGOON). A clear-sky lagoon that plays along: each track
+  sends up bubbles from its quarter of the floor, the sky and sun brighten with the mix, the water line rings out on
+  the kick, seaweed sways to the beat, clouds drift, and a goldfish swims back and forth, darting on the kick. In the
+  SUNSET palette the page shows NEON's SUNSET DRIVE instead.
 - **Status:** experimental, work in progress. It passes Felucca's host test suite; it has not yet been played on a real
   FM-1.
 

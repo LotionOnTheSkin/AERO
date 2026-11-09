@@ -1260,9 +1260,9 @@ static void setup(int s)
     case S_EDIT_GRAIN: eng(8); go_title("EDIT 2"); break;
     case S_EDIT_PHYS: eng(9); go_title("EDIT 1"); break;
     case S_EDIT_PHASE_FOLD: eng(2); TSEL->p[P_E7] = 80; go_title("EDIT 2"); ui.hot_col = 3; ui.hot_t = 30; break;   /* 1.5.5 FOLD (#104) */
-    case S_DRIVE: go_title("DRIVE"); break;           /* NEON: HOME > MIXER > CLOCK > DRIVE, stopped */
+    case S_DRIVE: go_title("LAGOON"); break;           /* NEON: HOME > MIXER > CLOCK > DRIVE, stopped */
     case S_DRIVE_PLAYING:                             /* .. playing a third into the beat, every track sounding */
-        go_title("DRIVE"); song.playing = 1; beat_pos = beat_samples() / 3u;
+        go_title("LAGOON"); song.playing = 1; beat_pos = beat_samples() / 3u;
         { uint32_t k; for (k = 0; k < NTRK; k++) trk[k].peak = 6000 + (int32_t)k * 6000; }
         break;
     case S_ALG1: case S_ALG2: case S_ALG3: case S_ALG4: case S_ALG5: case S_ALG6: case S_ALG7: case S_ALG8:
@@ -2269,7 +2269,8 @@ int main(int argc, char **argv)
     snprintf(path, sizeof path, "%s/report.txt", out);
     rep = fopen(path, "w");
     if (!rep) { fprintf(stderr, "cannot write %s\n", path); return 1; }
-    if (getenv("NEON_DRIVE_FRAMES")) {              /* NEON: SUNSET DRIVE as an animation (OUTDIR/ppm/drive_NNN.ppm): two
+    if (getenv("NEON_DRIVE_FRAMES") || getenv("AERO_LAGOON_FRAMES")) {   /* (AERO: the default palette's LAGOON; NEON's
+                                                                         * DRIVE in SUNSET) */              /* NEON: SUNSET DRIVE as an animation (OUTDIR/ppm/drive_NNN.ppm): two
                                                       * bars at 124 BPM, 30 frames a second, the firmware's own frames
                                                       * (ui_draw); simulated levels: a kick on every beat (track 4, the
                                                       * DRUM kit), an 8th-note bass (track 1, ACID: a BASS), a swelling
@@ -2293,7 +2294,7 @@ int main(int argc, char **argv)
             snprintf(name, sizeof name, "%03u", (unsigned)f);
             write_ppm(out, "drive", name);
         }
-        printf("ui_render: %u SUNSET DRIVE frames in %s/ppm/drive_*.ppm\n", (unsigned)nf, out);
+        printf("ui_render: %u LAGOON / SUNSET DRIVE frames in %s/ppm/drive_*.ppm\n", (unsigned)nf, out);
         return 0;
     }
     {
