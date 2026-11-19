@@ -339,7 +339,7 @@ static void sharing(void)
     trk[0].p[P_E5] = ADP_EDL_MAX;                  /* (the whole line)*/
     part_blocks(a, NB, 60);
     fresh();
-    host_preset(&trk[0], ENGI_PHYS, 7);             /* DRONE STRING: the largest state */
+    host_preset(&trk[0], ENGI_PHYS, 8);             /* SEA HARP (AERO; SYMP, as DRONE STRING was): the largest state */
     for (i = 0; i < 6u; i++)
         trk_note_on(&trk[0], 48 + i * 5, 120);
     for (i = 0; i < 400u; i++)
@@ -359,7 +359,7 @@ static void sharing(void)
     check(msg, !diff && dirty > 1000u && pk > 1000);
     /* PHYS after the echo has filled the memory: the same as PHYS from boot */
     fresh();
-    host_preset(&trk[0], ENGI_PHYS, 7);
+    host_preset(&trk[0], ENGI_PHYS, 8);
     rng_state = 0x1234567u;
     part_blocks(a, NB, 52);
     fresh();
@@ -369,7 +369,7 @@ static void sharing(void)
     part_blocks(junk, NB, 60);
     for (i = diff = 0; i < ADP_EDL_MAX * 512u; i++)
         diff += adp_part(&trk[0])->line[i] != 0;
-    host_preset(&trk[0], ENGI_PHYS, 7);
+    host_preset(&trk[0], ENGI_PHYS, 8);
     memset(trk[0].v, 0, sizeof trk[0].v);
     rng_state = 0x1234567u;
     part_blocks(b, NB, 52);

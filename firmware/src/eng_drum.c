@@ -317,11 +317,14 @@ static int32_t drum_keys(const track_t *t, uint32_t k)
 
 /* {KIT, TUNE, TONE, DECY, SNAP, ACC, KICK, DRV}; every kit suggests the BEAT pattern (GM notes) */
 static const preset_t DRUM_PRESETS[] = {
-    {"DRUM KIT", DRUM_KIT_E, {0, 100, 127, 100}, 0, 0, FX(0, 0, 0, 20), PAT(12)},   /* (core.h: SAMPLE PERC's too) */
-    /* 1.5.6 (Discussion #216): the new kits, appended */
-    {"DEEP KIT", {DK_DEEP, 64, 64, 64, 64, 100, 0, 0}, {0, 100, 127, 100}, 0, 0, FX(0, 0, 0, 28), PAT(12)},
-    {"TIGHT KIT", {DK_TIGHT, 64, 64, 56, 64, 100, 0, 16}, {0, 100, 127, 100}, 0, 0, FX(0, 0, 0, 8), PAT(12)},
-    {"PERC KIT", {DK_PERC, 64, 64, 64, 64, 100, 0, 0}, {0, 100, 127, 100}, 0, 0, FX(0, 0, 0, 24), PAT(12)},
+    /* AERO: kits for breaks (SAVE > PHRASES 14..18: SURF BRK, BOOM BAP, SPLASH, DRIZZLE, TIDAL).
+     * {KIT, TUNE, TONE, DECY, SNAP, ACC, KICK, DRV} */
+    {"BREAK KIT", DRUM_KIT_E, {0, 100, 127, 100}, 0, 0, FX(0, 0, 0, 20), PAT(14)},   /* (core.h: SAMPLE PERC's too) */
+    {"CRISP BREAK", {DK_10, 70, 92, 54, 96, 110, 0, 24}, {0, 100, 127, 100}, 0, 0, FX(0, 0, 0, 14), PAT(14)},
+    {"SPLASH KIT", {DK_TIGHT, 70, 90, 70, 90, 110, 0, 20}, {0, 100, 127, 100}, 0, 0, FX(0, 0, 10, 32), PAT(16)},
+    {"DEEP SEA", {DK_DEEP, 60, 50, 60, 64, 100, 1, 10}, {0, 100, 127, 100}, 0, 0, FX(0, 0, 0, 30), PAT(18)},
+    {"BOOM BAP", {DK_80, 60, 70, 80, 70, 100, 1, 30}, {0, 100, 127, 100}, 0, 0, FX(0, 0, 0, 16), PAT(15)},
+    {"RAIN PERC", {DK_PERC, 72, 80, 60, 64, 100, 0, 0}, {0, 100, 127, 100}, 0, 0, FX(0, 0, 20, 34), PAT(17)},
 };
 
 static const engine_t ENG_DRUM = {

@@ -211,11 +211,11 @@ static void formant_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, con
 }
 
 static const preset_t FORMANT_PRESETS[] = {
-    /* VOWEL VOWL2 TALK SHIFT | BUZZ BREATH Q RAND */
-    {"CHOIR AAH", {0, 0, 0, 0, 40, 22, 60, 0}, {85, 90, 115, 95}, 0, 0, FX(0, 70, 15, 90), PAT(5)},
-    {"VOX LEAD", {32, 0, 0, 2, 90, 8, 72, 0}, {6, 70, 105, 55}, 0, 1, FX(0, 20, 45, 40), PAT(4)},
-    {"WOW BASS", {95, 0, 68, 0, 100, 0, 80, 0}, {0, 70, 70, 30}, 0, 1, FX(10, 0, 10, 10), PAT(8)},
-    {"WHISPER", {0, 95, 88, 3, 50, 120, 50, 0}, {50, 90, 110, 90}, 0, 0, FX(0, 40, 30, 70), PAT(5)},
+    /* VOWEL VOWL2 TALK SHIFT | BUZZ BREATH Q RAND (AERO: clear-sky sounds) */
+    {"SKY CHOIR", {0, 0, 0, 0, 35, 30, 60, 0}, {90, 90, 118, 100}, 0, 0, FX(0, 75, 20, 100), PAT(5)},
+    {"SIREN", {16, 48, 40, 0, 60, 20, 75, 0}, {20, 80, 110, 70}, 0, 1, FX(0, 30, 45, 70), PAT(4)},
+    {"GULP BASS", {95, 0, 68, 0, 100, 0, 80, 0}, {0, 70, 70, 30}, 0, 1, FX(0, 0, 10, 10), PAT(8)},
+    {"SEA BREATH", {0, 95, 88, 3, 40, 125, 45, 0}, {60, 90, 110, 95}, 0, 0, FX(0, 50, 30, 90), PAT(5)},
 };
 
 static const engine_t ENG_FORMANT = {

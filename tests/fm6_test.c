@@ -431,7 +431,7 @@ static void macros(void)
         trk[0].p[P_E7] = 4;
         fm6_poll();
         check("SLOT F5 loads the fifth factory patch (main loop)", fm6_slot[0] == 4u &&
-              !memcmp(fm6_patch[0] + FP_NAME, "SOFT PAD  ", 10));
+              !memcmp(fm6_patch[0] + FP_NAME, "GLASS PAD ", 10));   /* (AERO) */
         trk[0].p[P_E7] = FM6_OWN;
         fm6_poll();
         check("SLOT back to OWN: the own patch again", fm6_slot[0] == FM6_OWN && !memcmp(fm6_patch[0], own, FP_SIZE));

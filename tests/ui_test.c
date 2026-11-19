@@ -431,7 +431,7 @@ static int test_sound_loads(void)
                  t->p[P_TRANS] == 5 && t->p[P_SLCR] == SL_GATE && t->p[P_SLPAT] == 4 && t->p[P_LEVEL] == 90);
     bad += check("..and no warning about the sequence", !msg_is("T1 SEQ REPLACED"));
     for (i = 0; i < ENGINES[0]->npresets; i++)
-        if (str_eq(ENGINES[0]->presets[i].name, "RAVE"))
+        if (str_eq(ENGINES[0]->presets[i].name, "SPLASH ARP"))
             break;
     t->p[P_AMODE] = 0;
     t->preset = (uint8_t)(i - 1u);
@@ -1448,7 +1448,7 @@ static int test_categories(void)
     {   /* AERO: NEON's presets 0..15 in bytes 30..31 of SLICE's row, its own (AERO's, 16..31) in bytes 28..29; SLICE's
          * reach stops before both; the rows of MIDI LEARN (14) and the settings (15) untouched */
         uint8_t was14 = favorites.factory[14][3], was15 = favorites.factory[15][3];
-        int fok = ENGINES[ENGI_NEON]->npresets == 24u &&
+        int fok = ENGINES[ENGI_NEON]->npresets == 16u &&
                   favorite_set(ENGI_NEON, 3, 1) && favorites.factory[13][30] == 0x08u &&
                   favorite_set(ENGI_NEON, 17, 1) && favorites.factory[13][28] == 0x02u && favorite_has(ENGI_NEON, 17) &&
                   favorite_set(ENGI_NEON, 31, 1) && favorites.factory[13][29] == 0x80u && !favorite_set(ENGI_NEON, 32, 1) &&
@@ -5127,8 +5127,8 @@ static int test_fm4_retired(void)
     int16_t p[P_COUNT];
     uint8_t v[FP_SIZE + 1u];
     ui_power_on();
-    bad += check("power-on: track 2 is FM6 PAD (TRK_DEF, was DIGITAL PAD)", trk[1].eng_req == ENGI_FM6 &&
-                 str_eq(ENGINES[ENGI_FM6]->presets[trk[1].preset].name, "PAD"));
+    bad += check("power-on: track 2 is FM6 GLASS PAD (TRK_DEF, was DIGITAL PAD; AERO: FM6's PAD retuned)", trk[1].eng_req == ENGI_FM6 &&
+                 str_eq(ENGINES[ENGI_FM6]->presets[trk[1].preset].name, "GLASS PAD"));
     preset_all_pos(&total);
     for (i = 0; i < total; i++) {
         e = preset_all_at(i, &k);
@@ -5153,7 +5153,7 @@ static int test_fm4_retired(void)
                                             "ADPCM",
 #endif
 #if FELUCCA_NEON
-                                            "NEON",
+                                            "AERO",
 #endif
         };
         uint32_t last = 0xFFu, r = 0, n = 0;
@@ -9191,11 +9191,11 @@ static int test_fm6_foot_name(void)
     song.sel = 1;                                    /* T2: FM6 PAD (SLOT F5) */
     tr = song.sel;
     sound_name(TSEL, b);
-    ok = TSEL->eng_req == ENGI_FM6 && fm6_slot[tr] == 4u && str_eq(b, "PAD");
+    ok = TSEL->eng_req == ENGI_FM6 && fm6_slot[tr] == 4u && str_eq(b, "GLASS PAD");
     fm6_patch[tr][3u * FP_OP + FP_OL] ^= 1u;         /* the factory patch edited: SLOT OWN, the name stays */
     fm6_adopt(tr);
     sound_name(TSEL, b);
-    ok &= fm6_slot[tr] == FM6_OWN && str_eq(b, "PAD");
+    ok &= fm6_slot[tr] == FM6_OWN && str_eq(b, "GLASS PAD");
     bad += check("#309 FM6 footer: the preset's name on F5 and on its edited patch (OWN)", ok);
     fm6_bank_used = 1u;
     fm6_bank_read = ft_bank_read;
@@ -9210,7 +9210,7 @@ static int test_fm6_foot_name(void)
     TSEL->p[P_E7] = 4;
     fm6_poll();
     sound_name(TSEL, b);
-    bad += check("#309 FM6 footer: back on F5, the preset's name", fm6_slot[tr] == 4u && str_eq(b, "PAD"));
+    bad += check("#309 FM6 footer: back on F5, the preset's name", fm6_slot[tr] == 4u && str_eq(b, "GLASS PAD"));
     fm6_bank_used = 0;
     fm6_bank_read = 0;
     return bad;

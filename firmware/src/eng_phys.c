@@ -221,18 +221,18 @@ static void phys_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
 /* MODAL partials by STRC: 34 harmonic, 70 1 : 2.83 : 5.48 : 8.90 (a free bar, a chime: 1 : 2.76 : 5.40 : 8.93),
  * 98 1 : 3.57 : 7.65, 116 1 : 4.0 : 9.0 (a tuned bar: 1 : 4 : 10) */
 static const preset_t PHYS_PRESETS[] = {
-    /* name, {MODEL, STRC, BRIT, DAMP, POS, ACC, BOW, EXC}, {A D S R}, fenv, mono */
-    {"BELL TREE", {PM_MODAL, 70, 100, 106, 12, 100, 0, 6}, {0, 100, 127, 96}, 0, 0, FX(0, 20, 30, 60), PAT(7)},
-    {"MARIMBA", {PM_MODAL, 116, 38, 40, 24, 90, 0, 30}, {0, 90, 127, 52}, 0, 0, FX(0, 0, 15, 30), PAT(6)},
-    {"PLUCK", {PM_STRING, 56, 72, 84, 40, 96, 0, 0}, {0, 100, 127, 58}, 0, 0, FX(0, 10, 30, 30), PAT(3)},
-    {"BOWED METAL", {PM_MODAL, 98, 70, 112, 10, 80, 90, 0}, {60, 90, 127, 90}, 0, 0, FX(0, 40, 20, 70), PAT(5)},
-    {"KALIMBA", {PM_MODAL, 34, 16, 56, 100, 90, 0, 48}, {0, 100, 127, 60}, 0, 0, FX(0, 10, 20, 40), PAT(7)},
-    /* MEMB: {MODEL, HARM, BRIT, DAMP, POS, ACC, BEND, EXC} */
-    {"HAND DRUM", {PM_MEMB, 112, 76, 56, 44, 100, 14, 24}, {0, 100, 127, 64}, 0, 0, FX(0, 0, 10, 30), PAT(6)},
-    {"TOMS", {PM_MEMB, 0, 52, 40, 30, 100, 40, 30}, {0, 100, 127, 70}, 0, 0, FX(0, 0, 0, 40), PAT(2)},
+    /* name, {MODEL, STRC, BRIT, DAMP, POS, ACC, BOW, EXC}, {A D S R}, fenv, mono (AERO: bells, water, mallets) */
+    {"GLASS BELL", {PM_MODAL, 72, 110, 108, 12, 100, 0, 4}, {0, 100, 127, 100}, 0, 0, FX(0, 20, 35, 75), PAT(7)},
+    {"REEF MALLET", {PM_MODAL, 116, 45, 40, 24, 90, 0, 30}, {0, 90, 127, 55}, 0, 0, FX(0, 0, 25, 45), PAT(6)},
+    {"RAIN HARP", {PM_STRING, 56, 80, 90, 40, 96, 0, 0}, {0, 100, 127, 62}, 0, 0, FX(0, 15, 40, 50), PAT(3)},
+    {"GLASS BOW", {PM_MODAL, 98, 80, 114, 10, 80, 90, 0}, {60, 90, 127, 95}, 0, 0, FX(0, 40, 25, 85), PAT(5)},
+    {"CORAL KEYS", {PM_MODAL, 34, 30, 60, 100, 90, 0, 48}, {0, 100, 127, 64}, 0, 0, FX(0, 15, 25, 55), PAT(7)},
+    /* MEMB: {MODEL, HARM, BRIT, DAMP, POS, ACC, BEND, EXC}: a high BEND, a falling drip */
+    {"DRIP DRUM", {PM_MEMB, 112, 90, 40, 44, 100, 70, 24}, {0, 100, 127, 60}, 0, 0, FX(0, 0, 20, 40), PAT(6)},
+    {"STEEL PAN", {PM_MEMB, 127, 100, 70, 30, 100, 0, 20}, {0, 100, 127, 70}, 0, 0, FX(0, 10, 25, 55), PAT(3)},
+    {"WIND CHIME", {PM_MODAL, 60, 120, 116, 6, 100, 0, 2}, {0, 100, 127, 110}, 0, 0, FX(0, 25, 40, 85), PAT(7)},
     /* SYMP: {MODEL, CHRD, BRIT, DAMP, SYMP, ACC, BUZZ, EXC} */
-    {"DRONE STRING", {PM_SYMP, 127, 80, 88, 64, 100, 92, 0}, {0, 100, 127, 90}, 0, 0, FX(0, 10, 20, 50), PAT(3)},
-    {"HARP", {PM_SYMP, 8, 62, 74, 60, 90, 0, 0}, {0, 100, 127, 80}, 0, 0, FX(0, 20, 20, 60), PAT(3)},
+    {"SEA HARP", {PM_SYMP, 8, 70, 80, 60, 90, 0, 0}, {0, 100, 127, 85}, 0, 0, FX(0, 25, 30, 70), PAT(3)},
 };
 
 static const engine_t ENG_PHYS = {

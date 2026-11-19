@@ -65,7 +65,9 @@ static void felucca_init(void)
         t->engine = t->eng_req;
         eng_mem_claim(t);                     /* (zeros already: no note can come before) */
         track_defaults_steps(t);              /* (a sound load never touches them) */
-        if (TRK_DEF[i][2])
+        if (TRK_DEF[i][2] && pat_is_grid(TRK_DEF[i][2] - 1u))
+            load_grid16(t, PATTERNS[TRK_DEF[i][2] - 1u].hit, PATTERNS[TRK_DEF[i][2] - 1u].acc);
+        else if (TRK_DEF[i][2])
             load_pat16(t, PATTERNS[TRK_DEF[i][2] - 1u].note, PATTERNS[TRK_DEF[i][2] - 1u].flags);
         pat_sig[i] = steps_sig(t);            /* a default pattern, not the user's */
         pat_last[i] = TRK_DEF[i][2];

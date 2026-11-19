@@ -54,7 +54,7 @@ async function editorMock() {
   const rq = async (r, o) => link.request(r, o);
   const info = E.parse[E.CMD.INFO](await rq(E.req.info()));
   ok(info.nengines === 16 && info.engines[1] === "-" && info.engines[12] === "FM6" && info.engines[13] === "SLICE"
- && info.engines[14] === "-" && info.engines[15] === "NEON"
+ && info.engines[14] === "-" && info.engines[15] === "AERO"
  && info.engines[5] === "VOICE" && info.engines[6] === "TRIO" && info.engines[7] === "WHEEL" && info.engines[8] === "GRAIN" && info.engines[9] === "PHYS" && info.engines[10] === "DRUM" && info.engines[11] === "NOISE" && info.pcount === 114 && info.pe0 === 106 && info.engines[4] === "SAMPLE",
     "editor: INFO");
   let descs = 0;
@@ -159,9 +159,9 @@ async function editorMock() {
   ok(!prefs.favorites[info.nengines][31] && !E.devicePresetRows(info, names, prefs).some((r) => r.user), "editor: erased slot disappears and loses star");
   {   /* the lists in the device's order (engines.c ENGINE_ORDER): FM6 second, DRUM last, "-" never; the numbers stay */
     const shown = E.engineOrder(info.engines).map((i) => info.engines[i]);
-    ok(shown.join() === "ANALOG,FM6,PHASE,LOFI,SAMPLE,VOICE,TRIO,WHEEL,GRAIN,PHYS,NOISE,SLICE,DRUM,NEON" &&
+    ok(shown.join() === "ANALOG,FM6,PHASE,LOFI,SAMPLE,VOICE,TRIO,WHEEL,GRAIN,PHYS,NOISE,SLICE,DRUM,AERO" &&
        E.engineOrder(info.engines)[1] === 12 && E.engineOrder(info.engines)[12] === 10,
-       "editor: engines listed FM6 second, DRUM then NEON last (indices kept)");
+       "editor: engines listed FM6 second, DRUM then AERO last (indices kept)");
     ok(E.engineOrder(["ANALOG", "X", "-", "DRUM", "FM6"]).join() === "0,4,3,1", "editor: an unknown engine follows the known ones");
     m.state.favorites[10][0] = m.state.favorites[12][0] = true;
     await rq(E.req.uiSet(3, 0));
@@ -393,8 +393,8 @@ function mockTables() {
        ph.presets.length === 9 && !ph.presets.some((p) => p.name === "RAIN" || p.name === "DRUM KIT"),
        "editor: PHYS models MODAL STRNG MEMB SYMP (no DUST, no DRUM), 9 presets");
     ok(dr.name === "DRUM" && dr.edit.map((d) => d.label).join() === "KIT,TUNE,TONE,DECY,SNAP,ACC,KICK,DRV" &&
-       dr.presets.length === 4 && dr.presets.every((p) => p.pat === 12) && dr.presets[0].name === "DRUM KIT",
-       "editor: DRUM engine 10 (KIT TUNE TONE DECY SNAP ACC KICK DRV), four kits (1.5.6: DEEP TIGHT PERC) suggesting BEAT");
+       dr.presets.length === 6 && dr.presets.every((p) => p.pat >= 14 && p.pat <= 18) && dr.presets[0].name === "BREAK KIT",
+       "editor: DRUM engine 10 (KIT TUNE TONE DECY SNAP ACC KICK DRV), AERO's six kits suggesting the breaks (14..18)");
   }
   const dj = DESC;
   if (!existsSync(dj)) { console.log("editor: mock tables == firmware (no build/host/desc.json)        skip"); return; }
@@ -1139,7 +1139,7 @@ async function editorFm6() {
     "FM6: a 32-voice bank SysEx is 4104 bytes, a single voice 163");
   let r = F6.parseSysex(bank);
   ok(r.voices.length === 32 && !r.badSum && r.voices.slice(0, 8).every((x, k) => eq(F6.pack(x.v), F6.FACTORY_PK[k])) &&
-     r.voices[8].name === "INIT VOICE" && r.voices[1].name === "GLASS BELL", "FM6: bank SysEx round trip (names, checksum)");
+     r.voices[8].name === "INIT VOICE" && r.voices[1].name === "CELESTA", "FM6: bank SysEx round trip (names, checksum)");
   r = F6.parseSysex(Uint8Array.from([...one, ...one]));
   ok(r.voices.length === 2 && eq(F6.pack(r.voices[1].v), F6.FACTORY_PK[3]), "FM6: two single-voice messages in one file");
   const bad = Uint8Array.from(one); bad[161] ^= 1;
@@ -1157,7 +1157,7 @@ async function editorFm6() {
   const info = E.parse[C.INFO](await rq(E.req.info()));
   ok(info.fm6 && info.fm6.factory === 8 && info.fm6.bank === 0 && info.fm6.caps === 3, "FM6: INFO tag (8 factory, no bank; FM6 v2 caps 3)");
   let list = E.parse[C.FM6_LIST](await rq(E.req.fm6List()));
-  ok(list.factory === 8 && list.bank === 0 && list.slots.length === 8 && list.slots[0].name === "TINE EP", "FM6: LIST names the factory patches, nbank 0");
+  ok(list.factory === 8 && list.bank === 0 && list.slots.length === 8 && list.slots[0].name === "GLASS EP", "FM6: LIST names the factory patches, nbank 0");
   const mine = F6.setName(F6.factory(2), "my bass");
   let p = E.parse[C.FM6_PUT](await rq(E.req.fm6Put(1, 4, F6.pack(mine))));
   let g = E.parse[C.FM6_GET](await rq(E.req.fm6Get(1, 4)));
@@ -1331,7 +1331,7 @@ function fm6Tolerant(F6, voices, bank, one) {
   const U = (...xs) => Uint8Array.from(xs.flatMap((x) => Array.from(x)));
   const names = (r) => r.voices.map((x) => x.name);
   const bankOk = (r, n = 32) => r.voices.length === n && r.voices.slice(0, 8).every((x, k) => eq(F6.pack(x.v), F6.FACTORY_PK[k]))
-    && r.voices[1].name === "GLASS BELL" && r.voices[8].name === "INIT VOICE";
+    && r.voices[1].name === "CELESTA" && r.voices[8].name === "INIT VOICE";
   const msg = (hdr, n, fill = 0) => { const d = new Array(n).fill(fill); return U(hdr, d, [F6.checksum(d), 0xF7]); };
   const otherMaker = U([0xF0, 0x41, 0x10, 0x42, 0x12, 0x40, 0, 0x7F, 0, 0x41, 0xF7]);
   let r = F6.parseSysex(U(bank.subarray(0, 4102), [0xF7]));
@@ -1341,19 +1341,19 @@ function fm6Tolerant(F6, voices, bank, one) {
   r = F6.parseSysex(U(bank.subarray(0, 4103), [0x00], [0xF7]));
   ok(bankOk(r) && !r.badSum, "FM6 import: bank with a stray byte before F7 (4105 bytes)");
   r = F6.parseSysex(U(bank.subarray(0, 4103), one));
-  ok(r.voices.length === 33 && bankOk({ voices: r.voices.slice(0, 32) }) && r.voices[32].name === "BRASS SECT",
+  ok(r.voices.length === 33 && bankOk({ voices: r.voices.slice(0, 32) }) && r.voices[32].name === "SUN HORN",
     "FM6 import: bank without F7, a single voice right after");
   r = F6.parseSysex(bank.subarray(0, 4000));
   ok(r.voices.length === 31 && r.short === 1 && r.voices[30].name === F6.name(F6.init()), "FM6 import: bank cut at EOF: its 31 whole voices");
   r = F6.parseSysex(one.subarray(0, 6 + 150));
-  ok(r.voices.length === 1 && r.short === 1 && r.voices[0].name === "BRASS", "FM6 import: single voice cut in its name");
+  ok(r.voices.length === 1 && r.short === 1 && r.voices[0].name === "SUN H", "FM6 import: single voice cut in its name");
   r = F6.parseSysex(one.subarray(0, 6 + 120));
   ok(r.voices.length === 0, "FM6 import: single voice cut before its voice bytes: none");
   const b10 = Uint8Array.from(bank); b10[4] = 0x10; b10[2] = 0x05;
   r = F6.parseSysex(b10);
   ok(bankOk(r), "FM6 import: byte count written 10 00, device 6");
   const one0 = Uint8Array.from(one); one0[4] = 0; one0[5] = 0;
-  ok(names(F6.parseSysex(one0)).join() === "BRASS SECT", "FM6 import: single voice with an odd byte count");
+  ok(names(F6.parseSysex(one0)).join() === "SUN HORN", "FM6 import: single voice with an odd byte count");
   r = F6.parseSysex(U([0x00, 0x13, 0x55, 0xF7, 0x80], otherMaker, bank, [0xFE, 0x00, 0x00], one, [0x0A, 0x0D]));
   ok(r.voices.length === 33 && r.skipped === 1 && r.kinds.join() === "maker:41", "FM6 import: junk and another maker's message around the voices");
   r = F6.parseSysex(U(bank, bank));
@@ -1361,7 +1361,7 @@ function fm6Tolerant(F6, voices, bank, one) {
   const raw = bank.subarray(6, 4102);
   r = F6.parseSysex(U(raw, raw, raw));
   ok(r.voices.length === 96 && bankOk({ voices: r.voices.slice(64) }) && !r.sysex, "FM6 import: raw 3 x 4096 bytes: 96 voices");
-  ok(names(F6.parseSysex(Uint8Array.from(F6.FACTORY_PK[1]))).join() === "GLASS BELL", "FM6 import: raw 128-byte packed voice");
+  ok(names(F6.parseSysex(Uint8Array.from(F6.FACTORY_PK[1]))).join() === "CELESTA", "FM6 import: raw 128-byte packed voice");
   /* a file of the format's second generation: the supplement bank (format 6, 1120 bytes), the voices, a performance (format 1, 94 bytes),
      a universal LM block: only the voices kept */
   const lm = U([0xF0, 0x43, 0x00, 0x7E, 0x01, 0x28], Array.from("LM  8973PM", (c) => c.charCodeAt(0)), new Array(30).fill(0), [0, 0xF7]);

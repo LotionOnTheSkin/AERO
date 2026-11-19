@@ -887,6 +887,29 @@ int main(int argc, char **argv)
         inst.p[P_SLEN] = (int16_t)c;
         transport_req = 1;
     }
+    if (getenv("PAT")) {                                /* PAT=n: factory pattern n (1-based, SAVE > PHRASES) played by
+                                                         * the sequencer; a drum grid (AERO's breaks) as its lane hits */
+        uint32_t n = (uint32_t)(atoi(getenv("PAT")) - 1) % NPATTERNS;
+        for (i = 0; i < NSTEP; i++) {
+            step_t *st = &inst.step[i];
+            memset(st, 0, sizeof *st);
+            st->time = ST_REST;
+            if (i >= 16u)
+                continue;
+            if (pat_is_grid(n)) {
+                if (PATTERNS[n].hit[i]) {
+                    st->time = ST_NOTE;
+                    st->hit = PATTERNS[n].hit[i];
+                    st->acc = PATTERNS[n].acc[i] & PATTERNS[n].hit[i];
+                }
+            } else {
+                uint8_t u = PATTERNS[n].note[i], fl = PATTERNS[n].flags[i];
+                put_step(&inst, i, u ? 1u : 0u, &u, (fl & 4u) ? ST_TIE : u ? ST_NOTE : ST_REST, fl & 3u);
+            }
+        }
+        inst.p[P_SLEN] = 16;
+        transport_req = 1;
+    }
     song.master_q12 = 4096;
     if (getenv("TRACKS")) {
         fclose(w);
@@ -903,7 +926,7 @@ int main(int argc, char **argv)
             if (f > FS / 10 && f < FS / 2) n |= 1u << 7;
             if (f > FS * 45 / 100 && f < FS * 8 / 10) n |= 1u << 11;
             if (f > FS * 9 / 10 && f < FS * 12 / 10) n |= 1u << 14;
-            fm1_in.notes = getenv("STEPS") ? 0u : n;   /* STEPS: only the sequencer plays */
+            fm1_in.notes = getenv("STEPS") || getenv("PAT") ? 0u : n;   /* STEPS, PAT: only the sequencer plays */
         }
         if (nk) {                       /* keys held 0.1-1.5 s (C E G B, then D F A C) */
             static const uint8_t K[8] = {7, 11, 14, 18, 9, 12, 16, 19};

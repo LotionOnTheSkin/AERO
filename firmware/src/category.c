@@ -18,28 +18,29 @@ static uint32_t cat_of_engine(uint32_t e) { return e == 10u || e == 13u ? CAT_DR
  * L LEAD, P PAD, U PLUCK, K KEYS, D DRUM, F FX, O OTHER); a preset past its string (DIGITAL's, FELUCCA_FM4 builds
  * only; SAMPLE's retired PERC, past SMP_NPRESETS): its engine's (cat_of_engine). tests/ui_test.c checks every string
  * against its engine's preset count. A preset's category is a hint for browsing: nothing else reads it */
-static const char *const PRESET_CAT[16] = {
-    "LPBPBKLBULLP",              /* 0 ANALOG: SAW LEAD, SOFT PAD, SQR BASS, PWM STR, ACID, SINE KEY, RAVE, SUB BASS,
-                                  * PLUCK, BRASS, WIND, STRINGS */
+static const char *const PRESET_CAT[16] = {     /* (AERO: its own sounds, every engine) */
+    "LPBPBKLBUFFP",              /* 0 ANALOG: SKY LEAD, AIR PAD, TIDE BASS, WAVE STR, BUBBLE ACID, GLASS KEYS, SPLASH
+                                  * ARP, DEEP SUB, DROPLET, SUNBEAM, SEA BREEZE, LAGOON STR */
     "",                          /* 1 DIGITAL (retired) */
-    "LKPLUU",                    /* 2 PHASE: BRASS, ORGAN, STRING, RESO, BELL, WIRE */
-    "LBLLL",                     /* 3 LOFI: PULSE LD, WAVE BASS, ARP 8BIT, WAVE LEAD, STEP LEAD */
+    "UKPLUL",                    /* 2 PHASE: CHIME, GLASS ORG, MIST STR, RIPPLE, RING BELL, SHORE LEAD */
+    "LBLLU",                     /* 3 LOFI: PIXEL SKY, DROP BASS, CHIP SPRAY, AQUA CHIP, PEBBLE */
     "KKLL",                      /* 4 SAMPLE: PIANO, (PIANO: the retired TRANH's alias), FLUTE, SAX */
-    "PLBF",                      /* 5 VOICE: CHOIR AAH, VOX LEAD, WOW BASS, WHISPER */
-    "BLLUP",                     /* 6 TRIO: FAT BASS, ARP LEAD, SYNC LEAD, RING BELL, CHIP CHOIR */
+    "PLBF",                      /* 5 VOICE: SKY CHOIR, SIREN, GULP BASS, SEA BREATH */
+    "BLLUP",                     /* 6 TRIO: REEF BASS, GLINT ARP, FLARE LEAD, RING CHIME, FOAM CHOIR */
     "KKKKK",                     /* 7 WHEEL: the organs */
-    "PFPP",                      /* 8 GRAIN: CLOUD PAD, GLITCH, FROZEN, SHIMMER */
-    "UUUPUDDPU",                 /* 9 PHYS: BELL TREE, MARIMBA, PLUCK, BOWED METAL, KALIMBA, HAND DRUM, TOMS, DRONE
-                                  * STRING, HARP */
-    "DDDD",                      /* 10 DRUM: DRUM KIT; 1.5.6: DEEP KIT, TIGHT KIT, PERC KIT */
-    "FFFF",                      /* 11 NOISE: WIND, RAIN, ARCADE, METAL */
-    "KUBLPUKU",                  /* 12 FM6: TINE EP, BELL, FM BASS, BRASS, PAD, MARIMBA, ORGAN, PLUCK */
-    "DD",                        /* 13 SLICE: CHOP, STUTTER */
+    "PFPP",                      /* 8 GRAIN: MIST CLOUD, SPRAY, FROST, GLISTEN */
+    "UUUPUDUUU",                 /* 9 PHYS: GLASS BELL, REEF MALLET, RAIN HARP, GLASS BOW, CORAL KEYS, DRIP DRUM,
+                                  * STEEL PAN, WIND CHIME, SEA HARP */
+    "DDDDDD",                    /* 10 DRUM: BREAK KIT, CRISP BREAK, SPLASH KIT, DEEP SEA, BOOM BAP, RAIN PERC */
+    "FFFFFF",                    /* 11 NOISE: OCEAN, RAINFALL, BUBBLES, BREEZE, STREAM, CHIME DUST */
+    "KUBLPUKU",                  /* 12 FM6: GLASS EP, CELESTA, AQUA BASS, SUN HORN, GLASS PAD, WOOD DROP, BLUE ORGAN,
+                                  * HARP DROP */
+    "DDDD",                      /* 13 SLICE: SURF CHOP, DRIP STUTTER, TIDE ROLL, BACKWASH */
     "LLBBKKPD",                  /* 14 ADPCM: SQUARE LEAD, PULSE LEAD, SAW BASS, SUB BASS, SOFT SINE, ORGAN, ECHO PAD,
                                   * NOISE HAT */
-    "PPBBLLKUPPBBPPPPUUUKUUUB",  /* 15 NEON: NEON SKY, SUMMERS, DRIVE BS, NIGHT BS, HERO LD, BRASS 85, STAB, ARP PLK,
-                                  * VHS STR, MIDNIGHT, SUB DRV, OUTRUN; AERO's: SKYGLASS, MEADOW, CLOUDS, AURORA,
-                                  * AQUABELL, CRYSTAL, DEW BELL, CLEAR KY, DEW DROP, SPARKLE, BUBBLES, SOFT SUB */
+    "PPPPPUUUUUKUUUUB",          /* 15 AERO (NEON's engine): SKYGLASS, MEADOW, CLOUDS, AURORA, HALO PAD, AQUABELL,
+                                  * CRYSTAL, DEW BELL, ICE BELL, TIDE BELL, CLEAR KEYS, DEW DROP, SPARKLE, RAINDROP,
+                                  * BUBBLES, SOFT SUB */
 };
 static uint32_t preset_cat(uint32_t e, uint32_t k)    /* factory preset k of engine e */
 {

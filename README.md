@@ -8,12 +8,23 @@ the AERO work is the look, the menus and the sounds. Everything else is Felucca 
 - **Download:** [Releases › aero-latest › `aero.fwsc`](../../releases/tag/aero-latest), built by GitHub Actions on every push
   (`.github/workflows/build-aero.yml`).
 - **Try it in the browser:** open the [FM-1 emulator](https://joakimeriksson.github.io/fm1-emu), load `aero.fwsc`, press Start.
-- **The engine (from NEON):** NEON is the last engine. On the PRESETS page, turn the ENG knob to NEON.
-  `firmware/src/eng_neon.c` (MIT): WAVE (SUPER / PWM / SUB / GLASS), SPRD, BLND, MOVE, CUT, RES, WARM, KTR.
-  AERO adds WAVE GLASS (glassy FM tones: SPRD becomes RTIO, the modulator's ratio, 1 + RTIO / 16; BLND becomes
-  BRIT, the depth, which follows the envelope) and 12 presets after NEON's own: airy pads (SKYGLASS, MEADOW,
-  CLOUDS, AURORA), glassy bells and keys (AQUABELL, CRYSTAL, DEW BELL, CLEAR KY), bright plucks (DEW DROP,
-  SPARKLE, BUBBLES) and a bass (SOFT SUB).
+- **The sounds:** every factory preset is AERO's own, made for the Frutiger Aero theme: glassy bells, water, air,
+  drum breaks. Each engine's list (ENG on the PRESETS page) was replaced in place; NEON's synthwave presets are gone.
+  - **AERO** (NEON's engine, renamed; last in the list; `firmware/src/eng_neon.c`, MIT): WAVE SUPER / PWM / SUB /
+    GLASS. GLASS is a glassy FM tone (SPRD becomes RTIO, the bell's overtone ratio 1 + RTIO / 16; BLND becomes BRIT,
+    the brightness, which mellows as the note fades). 16 presets: pads SKYGLASS, MEADOW, CLOUDS, AURORA, HALO PAD;
+    bells AQUABELL, CRYSTAL, DEW BELL, ICE BELL, TIDE BELL; CLEAR KEYS; plucks DEW DROP, SPARKLE, RAINDROP, BUBBLES;
+    SOFT SUB.
+  - **Breaks:** DRUM's kits (BREAK KIT, CRISP BREAK, SPLASH KIT, DEEP SEA, BOOM BAP, RAIN PERC) and five break
+    patterns in SAVE > PHRASES (14 SURF BRK, 15 BOOM BAP, 16 SPLASH, 17 DRIZZLE, 18 TIDAL), drum grids with several
+    drums a step; each kit suggests one. SLICE cuts up the built-in break (SURF CHOP, DRIP STUTTER, TIDE ROLL,
+    BACKWASH).
+  - **Bells and water elsewhere:** PHYS (GLASS BELL, WIND CHIME, STEEL PAN, DRIP DRUM, SEA HARP ..), FM6 (GLASS EP,
+    CELESTA, GLASS PAD ..; its patches retuned and renamed), NOISE (OCEAN, RAINFALL, BUBBLES, STREAM ..), and airy
+    leads, pads and basses on ANALOG, PHASE, LOFI, VOICE, TRIO, WHEEL and GRAIN. SAMPLE keeps its recorded
+    instruments (PIANO, FLUTE, SAX).
+  - Felucca-Engines (MIT: ANALOG, PHASE, LOFI, TRIO, WHEEL, NOISE) is vendored in `firmware/engines/` (from upstream
+    d026007) so these presets can live in it.
 - **The look:** Frutiger Aero. A clear-sky boot screen (a glossy aqua sun, bubbles, a green hill), the AQUA palette
   (mist, deep aqua, ink, leaf green) as the default (MENU > COLOR still offers NEON's SUNSET and Felucca's palettes),
   Nunito for values and titles and Open Sans for labels. In AQUA (STYLE FLAT) the main pages are glass over a sky:

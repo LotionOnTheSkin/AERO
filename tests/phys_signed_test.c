@@ -9,6 +9,13 @@ int main(void)
     uint64_t hash = UINT64_C(14695981039346656037);
     uint32_t negative = 0, positive = 0;
     host_tracks_init(); host_preset(&trk[0], ENGI_PHYS, 0);
+    {   /* (AERO: the factory presets are AERO's; the baseline keeps Felucca's BELL TREE, set here) */
+        static const int16_t E[8] = {PM_MODAL, 70, 100, 106, 12, 100, 0, 6}, ENV[4] = {0, 100, 127, 96};
+        for (uint32_t i = 0; i < 8u; i++)
+            trk[0].p[P_E0 + i] = E[i];
+        trk[0].p[P_ATK] = ENV[0]; trk[0].p[P_DEC] = ENV[1]; trk[0].p[P_SUS] = ENV[2]; trk[0].p[P_REL] = ENV[3];
+        trk[0].p[P_ED_FLT] = 0;
+    }
     trk_note_on(&trk[0], 60, 80);
     for (uint32_t b = 0; b < 128; b++) {
         int32_t out[CTL] = {0}; track_render(&trk[0], out, CTL);

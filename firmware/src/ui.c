@@ -1209,7 +1209,7 @@ static void track_defaults_steps(track_t *t)
         step_clear(&t->step[i]);
 }
 
-/* SAVE > PHRASES: the factory patterns (PATTERNS[], "01".."13"), then the used user presets that hold
+/* SAVE > PHRASES: the factory patterns (PATTERNS[], "01".."18"), then the used user presets that hold
  * one ("U07"): list index n. Loading one replaces the track's steps 1..16 (the rest cleared) and LEN;
  * a user preset's pattern brings its stored LEN (at most 16), DIV, SWING and GATE too. The notes are
  * loaded as they are: the patterns are written for the register of their kind of sound, DRUM and
@@ -1233,7 +1233,9 @@ static void pat_label(uint32_t n, char *tag, char *name)   /* tag: 4 bytes ("01"
 static void pat_load(track_t *t, uint32_t n)
 {
     load_begin(t, UNDO_PAT);
-    if (n < NPATTERNS)
+    if (n < NPATTERNS && pat_is_grid(n))           /* (AERO: the breaks) */
+        load_grid16(t, PATTERNS[n].hit, PATTERNS[n].acc);
+    else if (n < NPATTERNS)
         load_pat16(t, PATTERNS[n].note, PATTERNS[n].flags);
     else
         up_pat_load(t, up_pat_nth(n - NPATTERNS));

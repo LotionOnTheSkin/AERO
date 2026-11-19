@@ -197,6 +197,8 @@ static uint32_t eng_step(uint32_t e, int32_t dir)
 static const struct {
     const char *name;
     uint8_t note[16], flags[16];
+    uint8_t hit[16], acc[16];    /* (AERO) a drum grid instead (any hit: no notes): bit l lane l hits (KICK SNARE CLAP
+                                  * HATCL HATOP TOM RIM BELL), acc its accents; the break patterns */
 } PATTERNS[] = {
     {"ACID", {45, 45, 57, 45, 0, 48, 45, 55, 45, 0, 57, 52, 45, 48, 0, 50},          /* 1 */
      {1, 0, 2, 0, 0, 0, 1, 2, 0, 0, 1, 0, 0, 2, 0, 1}},
@@ -228,7 +230,28 @@ static const struct {
      * now that the arpeggiator is the track's and a preset no longer switches it on */
     {"ARP", {48, 51, 55, 60, 63, 67, 72, 75, 48, 51, 55, 60, 63, 67, 72, 75},       /* 13 */
      {1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0}},
+    /* AERO: drum breaks as grids (several drums a step; lanes: 1 KICK 2 SNARE 4 CLAP 8 HATCL 16 HATOP 32 TOM 64 RIM
+     * 128 BELL), for the DRUM kits (on another engine the lanes play their GM notes) */
+    {"SURF BRK", {0}, {0}, {9, 8, 9, 8, 10, 8, 8, 10, 8, 10, 9, 9, 10, 8, 8, 18},     /* 14 the classic break */
+     {1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0}},
+    {"BOOM BAP", {0}, {0}, {9, 0, 8, 0, 10, 0, 8, 1, 8, 0, 9, 0, 10, 0, 8, 0},         /* 15 */
+     {1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0}},
+    {"SPLASH", {0}, {0}, {1, 8, 16, 8, 6, 8, 16, 9, 8, 1, 16, 8, 6, 8, 16, 64},        /* 16 open hats, claps */
+     {1, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0}},
+    {"DRIZZLE", {0}, {0}, {9, 64, 8, 2, 10, 8, 1, 8, 8, 9, 2, 8, 10, 64, 9, 2},        /* 17 ghost notes, rims */
+     {1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0}},
+    {"TIDAL", {0}, {0}, {9, 0, 8, 0, 8, 1, 8, 0, 10, 0, 8, 32, 136, 32, 16, 0},        /* 18 half time, toms, bell */
+     {1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0}},
 };
+/* (AERO) a factory pattern is a drum grid */
+static int pat_is_grid(uint32_t n)
+{
+    uint32_t i;
+    for (i = 0; i < 16u; i++)
+        if (PATTERNS[n].hit[i])
+            return 1;
+    return 0;
+}
 #undef T_
 #define NPATTERNS (sizeof PATTERNS / sizeof PATTERNS[0])
 

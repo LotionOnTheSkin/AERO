@@ -1,8 +1,6 @@
-# Felucca-Engines (MIT): the ANALOG LOFI TRIO WHEEL NOISE PHASE engines, dsp.c, felucca_engine.h, their tables.
+# (AERO: Felucca-Engines (MIT, the ANALOG LOFI TRIO WHEEL NOISE PHASE engines) is vendored in firmware/engines at
+# d026007, so AERO's own factory presets can live in it.)
 # felucca-bsp (MPL-2.0): the hardware layer (chip/, boards/fm1/).
-[submodule "firmware/engines"]
-	path = firmware/engines
-	url = https://github.com/hugelton/Felucca-Engines.git
 [submodule "firmware/bsp"]
 	path = firmware/bsp
 	url = https://github.com/hugelton/felucca-bsp.git

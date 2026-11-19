@@ -84,7 +84,7 @@ static const char *const N_ENGNAME[] = {"ANALOG", FELUCCA_FM4 ? "DIGITAL" : "-",
                                              "-",       /* 14: reserved for ADPCM (engines.c ENG_RESERVED) */
 #endif
 #if FELUCCA_NEON
-                                             "NEON",
+                                             "AERO",
 #endif
 };
 typedef char engname_fits[sizeof N_ENGNAME / sizeof N_ENGNAME[0] == NENGINES ? 1 : -1];   /* one name an engine number */

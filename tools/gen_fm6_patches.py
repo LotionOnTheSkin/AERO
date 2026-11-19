@@ -54,23 +54,24 @@ INIT = voice("INIT VOICE", 1, [op(ol=99)] + [op() for _ in range(5)], lpms=3)
 
 # OP1..OP6. Algorithm 5 = three pairs (1<-2, 3<-4, 5<-6 with the feedback), 32 = six carriers.
 PATCHES = [
-    ("TINE EP", voice("TINE EP", 5, [
+    # AERO: glass, water, sun (Felucca's patches retuned and renamed)
+    ("GLASS EP", voice("GLASS EP", 5, [
         op(r=(96, 25, 25, 67), l=(99, 75, 0, 0), ol=98, kvs=2, rs=3),
         op(r=(95, 50, 35, 78), l=(99, 75, 0, 0), ol=58, kvs=7, rs=3),
         op(r=(95, 20, 20, 50), l=(99, 95, 0, 0), ol=90, kvs=2, det=8, rs=2),
-        op(r=(97, 62, 40, 60), l=(99, 60, 0, 0), ol=68, fc=14, kvs=6, rs=3),
+        op(r=(97, 62, 40, 60), l=(99, 60, 0, 0), ol=76, fc=14, kvs=6, rs=3),
         op(r=(95, 30, 20, 60), l=(99, 90, 0, 0), ol=78, det=6, kvs=1),
         op(r=(95, 40, 30, 60), l=(99, 80, 0, 0), ol=52, kvs=3)],
         fb=3, lfs=34, lfd=33, lfw=4, lpms=2)),
-    ("BELL", voice("GLASS BELL", 5, [
+    ("CELESTA", voice("CELESTA", 5, [
         op(r=(99, 40, 25, 35), l=(99, 80, 0, 0), ol=96, kvs=1),
         op(r=(99, 35, 25, 35), l=(99, 70, 0, 0), ol=78, fc=3, ff=50, kvs=3),
         op(r=(99, 45, 30, 40), l=(99, 70, 0, 0), ol=84, fc=2, ff=38, det=9, kvs=1),
-        op(r=(99, 50, 30, 40), l=(99, 60, 0, 0), ol=70, fc=5, kvs=3),
+        op(r=(99, 50, 30, 40), l=(99, 60, 0, 0), ol=72, fc=7, kvs=3),
         op(r=(99, 60, 40, 45), l=(99, 50, 0, 0), ol=78, fc=5, ff=40, det=5),
         op(r=(99, 60, 40, 45), l=(99, 50, 0, 0), ol=60)],
         fb=0, lpms=0)),
-    ("FM BASS", voice("ROUND BASS", 5, [
+    ("AQUA BASS", voice("AQUA BASS", 5, [
         op(r=(99, 40, 30, 75), l=(99, 85, 70, 0), ol=99, kvs=2),
         op(r=(99, 60, 40, 75), l=(99, 72, 55, 0), ol=80, kvs=5),
         op(r=(99, 55, 40, 75), l=(99, 70, 50, 0), ol=80, det=8, kvs=1),
@@ -78,23 +79,23 @@ PATCHES = [
         op(ol=0),
         op(ol=0)],
         fb=0, lpms=0)),
-    ("BRASS", voice("BRASS SECT", 5, [
+    ("SUN HORN", voice("SUN HORN", 5, [
         op(r=(65, 50, 40, 60), l=(99, 92, 90, 0), ol=98, kvs=1),
         op(r=(55, 50, 40, 60), l=(99, 88, 85, 0), ol=80, kvs=3),
         op(r=(62, 50, 40, 60), l=(99, 92, 90, 0), ol=92, det=9, kvs=1),
         op(r=(50, 50, 40, 60), l=(99, 88, 85, 0), ol=78, kvs=3),
         op(r=(62, 50, 40, 60), l=(99, 92, 90, 0), ol=88, det=5, kvs=1),
         op(r=(52, 50, 40, 60), l=(99, 85, 82, 0), ol=72, kvs=2)],
-        fb=5, pr=(80, 60, 99, 60), pl=(46, 50, 50, 50), lfs=33, lfd=50, lpmd=6, lfw=4, lpms=3)),
-    ("PAD", voice("SOFT PAD", 5, [
+        fb=3, pr=(80, 60, 99, 60), pl=(46, 50, 50, 50), lfs=33, lfd=50, lpmd=6, lfw=4, lpms=3)),
+    ("GLASS PAD", voice("GLASS PAD", 5, [
         op(r=(40, 30, 40, 40), l=(99, 95, 90, 0), ol=92, det=5),
         op(r=(35, 30, 40, 40), l=(85, 90, 80, 0), ol=60, kvs=1),
         op(r=(40, 30, 40, 40), l=(99, 95, 90, 0), ol=92, det=10),
         op(r=(30, 25, 40, 40), l=(80, 90, 85, 0), ol=55, fc=2, kvs=1),
         op(r=(38, 30, 40, 40), l=(99, 95, 90, 0), ol=80, fc=2),
-        op(r=(35, 30, 40, 40), l=(85, 90, 85, 0), ol=50)],
+        op(r=(35, 30, 40, 40), l=(85, 90, 85, 0), ol=58, fc=3, ff=50)],   # (a glassy 3.5:1 shimmer on the third pair)
         fb=2, lfs=30, lfd=60, lpmd=4, lfw=4, lpms=2)),
-    ("MARIMBA", voice("WOOD BARS", 5, [
+    ("WOOD DROP", voice("WOOD DROP", 5, [
         op(r=(99, 52, 40, 55), l=(99, 0, 0, 0), ol=99, kvs=2, rs=2),
         op(r=(99, 75, 50, 60), l=(99, 0, 0, 0), ol=70, fc=4, kvs=5, rs=3),
         op(r=(99, 70, 50, 60), l=(99, 0, 0, 0), ol=72, fc=4, kvs=3, rs=3),
@@ -102,7 +103,7 @@ PATCHES = [
         op(ol=0),
         op(ol=0)],
         fb=0, lpms=0)),
-    ("ORGAN", voice("DRAWBARS", 32, [
+    ("BLUE ORGAN", voice("BLUE ORGAN", 32, [
         op(r=(99, 99, 99, 85), l=(99, 99, 99, 0), ol=90),
         op(r=(99, 99, 99, 85), l=(99, 99, 99, 0), ol=84, fc=0),
         op(r=(99, 99, 99, 85), l=(99, 99, 99, 0), ol=86, fc=2),
@@ -110,7 +111,7 @@ PATCHES = [
         op(r=(99, 99, 99, 85), l=(99, 99, 99, 0), ol=78, fc=4),
         op(r=(99, 99, 99, 85), l=(99, 99, 99, 0), ol=72, fc=1, ff=50)],
         fb=0, lfs=60, lpmd=3, lfw=4, lpms=3)),
-    ("PLUCK", voice("NYLON PICK", 5, [
+    ("HARP DROP", voice("HARP DROP", 5, [
         op(r=(99, 45, 30, 60), l=(99, 60, 0, 0), ol=98, kvs=2, rs=2),
         op(r=(99, 70, 40, 60), l=(99, 40, 0, 0), ol=76, fc=3, kvs=4, rs=2),
         op(r=(99, 60, 40, 60), l=(99, 30, 0, 0), ol=74, fc=2, det=8, kvs=2, rs=2),

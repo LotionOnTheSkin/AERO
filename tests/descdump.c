@@ -118,6 +118,16 @@ int main(void)
         for (i = 0; i < 16u; i++)
             v[i] = PATTERNS[k].flags[i];
         js_ints(v, 16);
+        if (pat_is_grid(k)) {                         /* (AERO: a break: its grid too) */
+            putchar(',');
+            for (i = 0; i < 16u; i++)
+                v[i] = PATTERNS[k].hit[i];
+            js_ints(v, 16);
+            putchar(',');
+            for (i = 0; i < 16u; i++)
+                v[i] = PATTERNS[k].acc[i];
+            js_ints(v, 16);
+        }
         putchar(']');
     }
     printf("],\n\"TRK_DEF\":[");
